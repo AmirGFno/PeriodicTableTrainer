@@ -36,4 +36,6 @@ android.archs = arm64-v8a
 android.private_storage = True
 android.accept_sdk_license = True
 p4a.branch = develop
+# Local libthorvg override handles the NDK r25b lib64/clang layout.
+p4a.local_recipes = p4a_recipes
 log_level = 2

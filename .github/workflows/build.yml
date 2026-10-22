@@ -85,6 +85,8 @@ jobs:
           cp mobile_index.html android_project/mobile_index.html
           cp update_config.py android_project/update_config.py
           sed -i "s/^android.numeric_version = .*/android.numeric_version = $((10000000 + $GITHUB_RUN_NUMBER))/" buildozer.spec
+          # p4a changes its working directory; provide an absolute path to the local recipe override.
+          sed -i "s|^p4a.local_recipes = .*|p4a.local_recipes = ${GITHUB_WORKSPACE}/p4a_recipes|" buildozer.spec
 
       - name: Build Android APK with Buildozer-managed NDK 25b
         run: |
