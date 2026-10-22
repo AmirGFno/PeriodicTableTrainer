@@ -1,0 +1,88 @@
+# Periodic Table Trainer
+
+یک اپلیکیشن دسکتاپ آفلاین با Python 3.11+ و Kivy برای تمرین نمادها، اعداد اتمی، نام عناصر و دسته‌بندی‌ها. داده‌ها داخل `elements_data.py` هستند و برنامه برای اجرا به اینترنت نیاز ندارد.
+
+## اجرا در ویندوز
+
+1. Python 3.11 یا جدیدتر را نصب کنید.
+2. در ترمینال، از پوشه‌ی پروژه Kivy را نصب کنید:
+
+   ```bash
+   python -m pip install kivy
+   ```
+
+3. برنامه را اجرا کنید:
+
+   ```bash
+   python main.py
+   ```
+
+در ابتدای بازی، نوع سؤال‌های دلخواه را انتخاب کنید. سؤال‌های فعال در یک جریان تصادفی ترکیب می‌شوند؛ هر عنصر در هر بازی فقط یک‌بار سؤال اصلی خواهد بود. دسته‌بندی‌ها در بازی به‌شکل انتخاب چندگزینه‌ای پرسیده می‌شوند.
+
+## فایل‌ها
+
+- `main.py` — رابط کاربری Kivy، جریان بازی، امتیازدهی و نتایج
+- `elements_data.py` — دیتاست آفلاین عناصر
+- `README.md` — راهنمای اجرا
+
+دیتاست legacy شامل عناصر ۱ تا ۵۴ به‌علاوه‌ی Po، Rn و Og است؛ یعنی ۵۷ عنصر یکتا. فایل‌های standalone فعلی در `index.html` و نسخه‌های مستقل وب، ویندوز و Android قرار دارند.
+
+## ساخت نسخه‌های standalone
+
+### ویندوز (EXE)
+
+در PowerShell/Command Prompt ویندوز، از ریشهٔ پروژه اجرا کنید:
+
+```powershell
+python -m pip install --upgrade pip "pywebview[winforms]" pyinstaller
+pyinstaller --noconfirm --clean --onefile --windowed --name "PeriodicTableTrainer" --icon=app.ico --add-data "windows_index.html;." --collect-all webview --hidden-import=clr windows_app.py
+```
+
+فایل خروجی `dist/PeriodicTableTrainer.exe` است. برای به‌روزرسانی خودکار، برنامه را در پوشه‌ای قرار دهید که کاربر اجازهٔ نوشتن در آن را دارد؛ پوشه‌های محافظت‌شده مثل `Program Files` ممکن است به دسترسی Administrator نیاز داشته باشند.
+
+### Android (APK)
+
+Buildozer به Linux/WSL و Android SDK/NDK نیاز دارد. در ریشهٔ پروژه:
+
+```bash
+python3 -m pip install --upgrade pip setuptools wheel
+python3 -m pip install "Cython<3" buildozer
+cp mobile_app.py android_project/main.py
+cp mobile_index.html android_project/mobile_index.html
+cp update_config.py android_project/update_config.py
+buildozer -v android debug
+```
+
+APK آزمایشی در پوشهٔ `bin/` ساخته می‌شود. این دستور آن را با کلید debug محلی امضا می‌کند؛ چنین APKای فقط برای آزمون مناسب است و با نسخهٔ release که با کلید CI امضا می‌شود، به‌روزرسانی درجا نخواهد داشت.
+
+### ساخت Release امضاشده با GitHub Actions
+
+Workflow در `.github/workflows/build.yml` ویندوز و Android را می‌سازد و APK را با کلید ثابت release امضا می‌کند. پیش از اجرای آن، یک بار یک کلید خصوصی بسازید و آن را محرمانه نگه دارید:
+
+```bash
+keytool -genkeypair -v -keystore periodictrainer-release.jks -alias periodictrainer -keyalg RSA -keysize 2048 -validity 10000
+base64 -w 0 periodictrainer-release.jks > periodictrainer-release.base64
+```
+
+مقدار base64 و رمزها را در GitHub repository secrets با نام‌های `ANDROID_KEYSTORE_BASE64`، `ANDROID_KEYSTORE_PASSWORD`، `ANDROID_KEY_ALIAS` و `ANDROID_KEY_PASSWORD` ثبت کنید. **فایل keystore و رمزها را commit نکنید و از کلید نسخه‌های قبلی پشتیبان امن بگیرید**؛ از دست‌دادن/تعویض کلید یا تغییر شناسهٔ بسته مانع نصب به‌روزرسانی روی نسخهٔ موجود می‌شود. شناسهٔ فعلی بسته `org.example.periodictrainer` است. Workflow با هر push یک APK و EXE ساخته و Release ایجاد می‌کند.
+
+## راه‌اندازی به‌روزرسانی خودکار
+
+1. `update_config.py` را ویرایش کنید و `VERSION_URL` را از placeholder `https://example.com/version.json` به نشانی واقعی HTTPS فایل manifest تغییر دهید (یا در ویندوز `PTT_VERSION_URL` را تنظیم کنید). اپ Android نیز باید با نشانی واقعی دوباره build شود.
+2. فایل `version.json` را روی همان میزبانی HTTPS منتشر کنید. قالب آن:
+
+   ```json
+   {
+     "latest_version": "1.0.0",
+     "notes": "یادداشت انتشار",
+     "windows_url": "https://example.com/downloads/PeriodicTableTrainer.exe",
+     "android_url": "https://example.com/downloads/app-debug.apk"
+   }
+   ```
+
+   همهٔ URLها باید HTTPS و مستقیم به فایل دانلودی باشند. آدرس‌های `example.com` فعلی فقط placeholder هستند. اگر Releaseها در GitHub منتشر می‌شوند، می‌توانید URLهای asset نسخهٔ جاری را به شکل `https://github.com/OWNER/REPO/releases/latest/download/PeriodicTableTrainer.exe` و `https://github.com/OWNER/REPO/releases/latest/download/app-debug.apk` قرار دهید و خود `version.json` را جداگانه (مثلاً در GitHub Pages یا raw file) میزبانی کنید.
+3. برای انتشار نسخهٔ بعدی، نسخه را در `update_config.py`، `buildozer.spec` و ثابت `CURRENT_APP_VERSION` در `windows_index.html` و `mobile_index.html` افزایش دهید؛ سپس `latest_version` و یادداشت‌ها را در manifest به‌روز کنید. نسخهٔ نمایشی/نام‌گذاری‌شده را نیز در `buildozer.spec` افزایش دهید؛ Workflow کد عددی Android را به صورت افزایشی تعیین می‌کند.
+4. Windows فایل EXE را کنار برنامه با نام `new_app.exe` دریافت می‌کند و `update.bat` را برای جایگزینی و اجرای دوباره می‌سازد. Android فایل APK را در فضای خصوصی برنامه دانلود و با `FileProvider` به نصب‌کنندهٔ سیستم تحویل می‌دهد؛ کاربر باید نصب را تأیید کند و در اولین نصب از این مسیر ممکن است اجازهٔ **Install from Unknown Sources** لازم باشد.
+
+برای حفظ اطلاعات Android هنگام نصب روی نسخهٔ قبلی، `package ID` و کلید امضای release باید ثابت بمانند. فایل‌های رکورد جداگانه در فضای خصوصی برنامه نگهداری می‌شوند؛ نصب APK با امضای متفاوت، نصب درجا را مسدود می‌کند.
+

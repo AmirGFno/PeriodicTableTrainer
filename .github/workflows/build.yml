@@ -1,0 +1,139 @@
+name: Build Windows EXE and Android APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    name: Build Windows EXE
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install packaging tools
+        run: python -m pip install --upgrade pip "pywebview[winforms]" pyinstaller
+
+      - name: Build standalone EXE
+        shell: pwsh
+        run: >-
+          pyinstaller --noconfirm --clean --onefile --windowed
+          --name "PeriodicTableTrainer"
+          --icon=app.ico
+          --add-data "windows_index.html;."
+          --collect-all webview --hidden-import=clr windows_app.py
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: dist/PeriodicTableTrainer.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    name: Build Android APK
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Android/Buildozer system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git zip unzip openjdk-17-jdk python3.10 python3.10-venv python3-pip \
+            build-essential ccache autoconf libtool pkg-config zlib1g-dev \
+            libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Buildozer
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install "Cython<3" buildozer
+
+      - name: Sync Android entry point and bundled HTML
+        run: |
+          cp mobile_app.py android_project/main.py
+          cp mobile_index.html android_project/mobile_index.html
+          cp update_config.py android_project/update_config.py
+          sed -i "s/^android.numeric_version = .*/android.numeric_version = $((10000000 + $GITHUB_RUN_NUMBER))/" buildozer.spec
+
+      - name: Build Android APK
+        run: buildozer -v android debug
+
+      - name: Sign APK with the persistent release key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${ANDROID_KEYSTORE_BASE64:?Configure the stable Android signing secrets before building releases}"
+          : "${ANDROID_KEYSTORE_PASSWORD:?Missing ANDROID_KEYSTORE_PASSWORD}"
+          : "${ANDROID_KEY_ALIAS:?Missing ANDROID_KEY_ALIAS}"
+          : "${ANDROID_KEY_PASSWORD:?Missing ANDROID_KEY_PASSWORD}"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > release-signing.jks
+          apk_file="$(find bin -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$apk_file"
+          apksigner="$(find "$HOME/.buildozer" -type f -path '*/build-tools/*/apksigner' -print | sort -V | tail -n 1)"
+          test -x "$apksigner"
+          "$apksigner" sign \
+            --ks release-signing.jks \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+            --key-pass env:ANDROID_KEY_PASSWORD \
+            --out app-debug.apk "$apk_file"
+          "$apksigner" verify --verbose app-debug.apk
+          rm -f release-signing.jks
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish build artifacts to GitHub Releases
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_assets
+          merge-multiple: true
+
+      - name: Create a release for this push
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_id }}-${{ github.run_attempt }}
+          name: Build ${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          body: |
+            Automatically built from commit ${{ github.sha }}.
+            Includes the Windows desktop executable and Android APK signed with the configured persistent release key.
+          files: release_assets/*
+          fail_on_unmatched_files: true
