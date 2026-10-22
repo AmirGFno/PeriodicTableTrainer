@@ -14,7 +14,8 @@ source.include_exts = py,html,css,js,png,jpg,kv,atlas
 source.exclude_dirs = __pycache__,.git,.buildozer,bin
 
 # Kivy owns the Android lifecycle; PyJNIus creates the native WebView.
-requirements = python3,kivy,pyjnius
+# Cython is pinned to the matching p4a recipe version for this Android build.
+requirements = python3,kivy,pyjnius,Cython==0.29.36
 orientation = portrait
 fullscreen = 1
 
@@ -27,8 +28,8 @@ android.add_resources = %(source.dir)s/data/update_file_paths.xml:xml/update_fil
 p4a.hook = %(source.dir)s/p4a_hook.py
 android.api = 36
 android.minapi = 23
-android.ndk = 29
-android.archs = arm64-v8a, armeabi-v7a
+android.ndk = 25b
+android.archs = arm64-v8a
 android.private_storage = True
 android.accept_sdk_license = True
 p4a.branch = develop

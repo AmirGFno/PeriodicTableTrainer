@@ -46,7 +46,7 @@ Buildozer به Linux/WSL و Android SDK/NDK نیاز دارد. در ریشهٔ �
 
 ```bash
 python3 -m pip install --upgrade pip setuptools wheel
-python3 -m pip install "Cython<3" buildozer
+python3 -m pip install "Cython==0.29.36" buildozer
 cp mobile_app.py android_project/main.py
 cp mobile_index.html android_project/mobile_index.html
 cp update_config.py android_project/update_config.py
@@ -68,20 +68,20 @@ base64 -w 0 periodictrainer-release.jks > periodictrainer-release.base64
 
 ## راه‌اندازی به‌روزرسانی خودکار
 
-1. `update_config.py` را ویرایش کنید و `VERSION_URL` را از placeholder `https://example.com/version.json` به نشانی واقعی HTTPS فایل manifest تغییر دهید (یا در ویندوز `PTT_VERSION_URL` را تنظیم کنید). اپ Android نیز باید با نشانی واقعی دوباره build شود.
+1. نشانی `VERSION_URL` اکنون به manifest همین مخزن تنظیم شده است: `https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/version.json`. اگر میزبانی دیگری انتخاب کردید، مقدار را در `update_config.py` تغییر دهید (در ویندوز می‌توان `PTT_VERSION_URL` را نیز تنظیم کرد). APK Android باید با تنظیم جدید دوباره build شود.
 2. فایل `version.json` را روی همان میزبانی HTTPS منتشر کنید. قالب آن:
 
    ```json
    {
      "latest_version": "1.0.0",
      "notes": "یادداشت انتشار",
-     "windows_url": "https://example.com/downloads/PeriodicTableTrainer.exe",
-     "windows_html_url": "https://example.com/downloads/windows_index.html",
-     "android_url": "https://example.com/downloads/app-debug.apk"
+     "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer.exe",
+     "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
+     "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"
    }
    ```
 
-   Windows updater از `windows_html_url` استفاده می‌کند؛ `windows_url` فقط برای سازگاری با manifestهای قبلی باقی مانده و دیگر برای آپدیت Windows مصرف نمی‌شود. همهٔ URLهای مصرف‌شده باید HTTPS و مستقیم به فایل دانلودی باشند. آدرس‌های `example.com` فعلی فقط placeholder هستند. اگر Releaseها در GitHub منتشر می‌شوند، نشانی asset رابط ویندوز را به شکل `https://github.com/OWNER/REPO/releases/latest/download/windows_index.html` و APK را به شکل `https://github.com/OWNER/REPO/releases/latest/download/app-debug.apk` تنظیم کنید و خود `version.json` را جداگانه (مثلاً در GitHub Pages یا raw file) میزبانی کنید.
+   Windows updater از `windows_html_url` استفاده می‌کند؛ `windows_url` صرفاً legacy است و در به‌روزرسانی Windows مصرف نمی‌شود. نشانی فعلی HTML از شاخهٔ `main` همین مخزن خوانده می‌شود؛ نشانی APK به آخرین asset انتشار GitHub اشاره می‌کند. برای دریافت APK، workflow باید با موفقیت تمام شده و Release در دسترس باشد؛ برای build خودکار Android نیز GitHub Secrets امضای release را تنظیم کنید.
 3. برای انتشار نسخهٔ بعدی، نسخه را در `update_config.py`، `buildozer.spec` و ثابت `CURRENT_APP_VERSION` در `windows_index.html` و `mobile_index.html` افزایش دهید؛ سپس `latest_version` و یادداشت‌ها را در manifest به‌روز کنید. نسخهٔ نمایشی/نام‌گذاری‌شده را نیز در `buildozer.spec` افزایش دهید؛ Workflow کد عددی Android را به صورت افزایشی تعیین می‌کند.
 4. Windows فقط رابط را از `windows_html_url` کنار برنامه با نام `new_index.html` دریافت می‌کند. `update.bat` پس از بستن برنامه، HTML قبلی را به `windows_index_old.html` می‌چرخاند، فایل جدید را جایگزین و EXE را دوباره اجرا می‌کند؛ خود EXE دانلود یا جایگزین نمی‌شود. فایل بیرونی `windows_index.html` در پوشهٔ EXE بر نسخهٔ داخلی اولویت دارد و در نبود آن، برنامه از نسخهٔ داخل EXE استفاده می‌کند. Android فایل APK را در فضای خصوصی برنامه دانلود و با `FileProvider` به نصب‌کنندهٔ سیستم تحویل می‌دهد؛ کاربر باید نصب را تأیید کند و در اولین نصب از این مسیر ممکن است اجازهٔ **Install from Unknown Sources** لازم باشد.
 

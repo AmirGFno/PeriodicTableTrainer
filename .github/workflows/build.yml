@@ -77,7 +77,7 @@ jobs:
       - name: Install Buildozer
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          python -m pip install "Cython<3" buildozer
+          python -m pip install "Cython==0.29.36" buildozer
 
       - name: Sync Android entry point and bundled HTML
         run: |
@@ -86,8 +86,11 @@ jobs:
           cp update_config.py android_project/update_config.py
           sed -i "s/^android.numeric_version = .*/android.numeric_version = $((10000000 + $GITHUB_RUN_NUMBER))/" buildozer.spec
 
-      - name: Build Android APK
-        run: buildozer -v android debug
+      - name: Build Android APK with Buildozer-managed NDK 25b
+        run: |
+          # buildozer.spec pins android.ndk=25b; let Buildozer download/cache that exact NDK.
+          python --version
+          buildozer -v android debug
 
       - name: Sign APK with the persistent release key
         env:
