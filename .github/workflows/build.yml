@@ -85,8 +85,17 @@ jobs:
           cp mobile_index.html android_project/mobile_index.html
           cp update_config.py android_project/update_config.py
           sed -i "s/^android.numeric_version = .*/android.numeric_version = $((10000000 + $GITHUB_RUN_NUMBER))/" buildozer.spec
-          # p4a changes its working directory; provide an absolute path to the local recipe override.
-          sed -i "s|^p4a.local_recipes = .*|p4a.local_recipes = ${GITHUB_WORKSPACE}/p4a_recipes|" buildozer.spec
+
+      - name: Prepare python-for-android with the NDK r25b libthorvg fix
+        run: |
+          set -euo pipefail
+          p4a_dir="$RUNNER_TEMP/python-for-android"
+          git clone --depth 1 --branch develop https://github.com/kivy/python-for-android.git "$p4a_dir"
+          python patch_p4a_libthorvg.py "$p4a_dir"
+          # Use this patched checkout directly; the prior local-recipe override
+          # was not selected and p4a kept executing its built-in recipe.
+          sed -i '/^p4a.source_dir = /d' buildozer.spec
+          echo "p4a.source_dir = $p4a_dir" >> buildozer.spec
 
       - name: Build Android APK with Buildozer-managed NDK 25b
         run: |
