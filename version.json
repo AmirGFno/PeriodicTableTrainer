@@ -2,5 +2,6 @@
   "latest_version": "1.0.0",
   "notes": "نسخهٔ اولیه",
   "windows_url": "https://example.com/downloads/PeriodicTableTrainer.exe",
+  "windows_html_url": "https://example.com/downloads/windows_index.html",
   "android_url": "https://example.com/downloads/PeriodicTableTrainer.apk"
 }

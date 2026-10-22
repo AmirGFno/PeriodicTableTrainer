@@ -8,7 +8,7 @@ import os
 APP_VERSION = "1.0.0"
 VERSION_URL = os.environ.get(
     "PTT_VERSION_URL",
-    "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/refs/heads/main/version.json",
+    "https://example.com/version.json",
 )
 REQUEST_TIMEOUT_SECONDS = 30
 MAX_UPDATE_BYTES = 500 * 1024 * 1024

@@ -51,8 +51,27 @@ def backup_file() -> Path:
 
 
 def bundled_file(filename: str) -> Path:
+    """Resolve a resource embedded by PyInstaller (or beside the source script)."""
     root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
     return root / filename
+
+
+def app_directory() -> Path:
+    """Return the directory beside the executable, or beside the source script."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+def windows_html_file() -> Path:
+    """Prefer a replaceable HTML file beside the EXE; otherwise use the bundle."""
+    external = app_directory() / "windows_index.html"
+    if external.is_file():
+        return external
+    internal = bundled_file("windows_index.html")
+    if internal.is_file():
+        return internal
+    raise FileNotFoundError("windows_index.html was not found beside the app or inside the EXE")
 
 
 def fetch_version_manifest() -> dict[str, Any]:
@@ -116,7 +135,7 @@ class BackupApi:
                 "notes": str(manifest.get("notes", "")),
             }
             if available:
-                result["windows_url"] = _https_url(manifest.get("windows_url"))
+                result["windows_html_url"] = _https_url(manifest.get("windows_html_url"))
             return result
         except Exception as exc:
             return {"error": f"بررسی نسخه ناموفق بود: {exc}"}
@@ -146,7 +165,8 @@ class BackupApi:
         threading.Thread(target=self._update_worker, name="windows-updater", daemon=True).start()
         return {"ok": True}
 
-    def _download_executable(self, url: str, destination: Path, expected_sha256: str | None) -> None:
+    def _download_html(self, url: str, destination: Path, expected_sha256: str | None) -> None:
+        """Download and validate only the replaceable Windows HTML interface."""
         request = Request(url, headers={"User-Agent": f"{APP_NAME}/{APP_VERSION}"})
         temporary = destination.with_suffix(destination.suffix + ".part")
         digest = hashlib.sha256()
@@ -154,7 +174,7 @@ class BackupApi:
             with urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
                 length = int(response.headers.get("Content-Length", "0") or 0)
                 if length > MAX_UPDATE_BYTES:
-                    raise ValueError("EXE exceeds the configured maximum download size")
+                    raise ValueError("HTML update exceeds the configured maximum download size")
                 received = 0
                 with temporary.open("wb") as output:
                     while True:
@@ -163,18 +183,19 @@ class BackupApi:
                             break
                         received += len(block)
                         if received > MAX_UPDATE_BYTES:
-                            raise ValueError("EXE exceeds the configured maximum download size")
+                            raise ValueError("HTML update exceeds the configured maximum download size")
                         output.write(block)
                         digest.update(block)
                         percent = int(received * 100 / length) if length else 0
                         self._progress(min(percent, 99), "در حال دانلود بروزرسانی... لطفاً برنامه را نبندید")
             if received == 0:
-                raise ValueError("Downloaded EXE is empty")
+                raise ValueError("Downloaded HTML file is empty")
             with temporary.open("rb") as source:
-                if source.read(2) != b"MZ":
-                    raise ValueError("Downloaded file is not a Windows executable")
+                sample = source.read(64 * 1024).lower()
+            if b"<html" not in sample:
+                raise ValueError("Downloaded file does not look like a Windows HTML page")
             if expected_sha256 and digest.hexdigest().lower() != str(expected_sha256).lower():
-                raise ValueError("SHA-256 check failed for the downloaded EXE")
+                raise ValueError("SHA-256 check failed for the downloaded HTML file")
             os.replace(temporary, destination)
         except Exception:
             temporary.unlink(missing_ok=True)
@@ -187,21 +208,24 @@ class BackupApi:
             latest = str(manifest["latest_version"])
             if _version_tuple(latest) <= _version_tuple(APP_VERSION):
                 raise ValueError("نسخهٔ جدیدی برای ویندوز موجود نیست.")
-            url = _https_url(manifest.get("windows_url"))
-            app_dir = Path(sys.executable).resolve().parent
-            new_exe = app_dir / "new_app.exe"
-            self._download_executable(url, new_exe, manifest.get("windows_sha256"))
+            url = _https_url(manifest.get("windows_html_url"))
+            app_dir = app_directory()
+            new_html = app_dir / "new_index.html"
+            self._download_html(url, new_html, manifest.get("windows_html_sha256"))
 
-            # The running EXE cannot replace itself. The adjacent BAT waits for
-            # this process to close, swaps the file, launches it, then self-deletes.
+            # Keep the downloaded interface beside the EXE. The batch file waits
+            # for this process to exit, rotates the previous HTML, installs the
+            # new one, restarts the EXE, and then deletes itself.
             bat = app_dir / "update.bat"
             bat.write_text(
                 "@echo off\r\n"
                 "cd /d \"%~dp0\"\r\n"
                 "timeout /t 2 /nobreak > NUL\r\n"
-                f"taskkill /f /im \"{EXE_NAME}\" > NUL 2>&1\r\n"
+                f"taskkill /f /im {EXE_NAME} > NUL 2>&1\r\n"
                 "timeout /t 1 /nobreak > NUL\r\n"
-                f"move /y \"%~dp0new_app.exe\" \"%~dp0{EXE_NAME}\" > NUL\r\n"
+                "if exist windows_index_old.html del /q windows_index_old.html\r\n"
+                "if exist windows_index.html ren windows_index.html windows_index_old.html\r\n"
+                "ren new_index.html windows_index.html\r\n"
                 f"start \"\" \"%~dp0{EXE_NAME}\"\r\n"
                 "del \"%~f0\"\r\n",
                 encoding="ascii",
@@ -209,7 +233,7 @@ class BackupApi:
             creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
             subprocess.Popen(["cmd.exe", "/c", str(bat)], cwd=str(app_dir), creationflags=creationflags, close_fds=True)
             self.restart_requested = True
-            self._progress(100, "به‌روزرسانی آماده است؛ برنامه دوباره اجرا می‌شود.")
+            self._progress(100, "به‌روزرسانی رابط آماده است؛ برنامه دوباره اجرا می‌شود.")
             time.sleep(0.3)
             try:
                 (self._window or webview.active_window()).destroy()
@@ -223,9 +247,7 @@ class BackupApi:
 
 
 def main() -> None:
-    html_file = bundled_file("windows_index.html")
-    if not html_file.is_file():
-        raise FileNotFoundError(f"Missing bundled app page: {html_file}")
+    html_file = windows_html_file()
     profile = app_data_dir() / "WebViewProfile"
     profile.mkdir(parents=True, exist_ok=True)
     api = BackupApi()

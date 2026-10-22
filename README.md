@@ -57,14 +57,14 @@ APK آزمایشی در پوشهٔ `bin/` ساخته می‌شود. این دس�
 
 ### ساخت Release امضاشده با GitHub Actions
 
-Workflow در `.github/workflows/build.yml` ویندوز و Android را می‌سازد و APK را با کلید ثابت release امضا می‌کند. پیش از اجرای آن، یک بار یک کلید خصوصی بسازید و آن را محرمانه نگه دارید:
+Workflow در `.github/workflows/build.yml` ویندوز، فایل HTML جداگانهٔ ویندوز و Android را می‌سازد/آماده می‌کند و APK را با کلید ثابت release امضا می‌کند. پیش از اجرای آن، یک بار یک کلید خصوصی بسازید و آن را محرمانه نگه دارید:
 
 ```bash
 keytool -genkeypair -v -keystore periodictrainer-release.jks -alias periodictrainer -keyalg RSA -keysize 2048 -validity 10000
 base64 -w 0 periodictrainer-release.jks > periodictrainer-release.base64
 ```
 
-مقدار base64 و رمزها را در GitHub repository secrets با نام‌های `ANDROID_KEYSTORE_BASE64`، `ANDROID_KEYSTORE_PASSWORD`، `ANDROID_KEY_ALIAS` و `ANDROID_KEY_PASSWORD` ثبت کنید. **فایل keystore و رمزها را commit نکنید و از کلید نسخه‌های قبلی پشتیبان امن بگیرید**؛ از دست‌دادن/تعویض کلید یا تغییر شناسهٔ بسته مانع نصب به‌روزرسانی روی نسخهٔ موجود می‌شود. شناسهٔ فعلی بسته `org.example.periodictrainer` است. Workflow با هر push یک APK و EXE ساخته و Release ایجاد می‌کند.
+مقدار base64 و رمزها را در GitHub repository secrets با نام‌های `ANDROID_KEYSTORE_BASE64`، `ANDROID_KEYSTORE_PASSWORD`، `ANDROID_KEY_ALIAS` و `ANDROID_KEY_PASSWORD` ثبت کنید. **فایل keystore و رمزها را commit نکنید و از کلید نسخه‌های قبلی پشتیبان امن بگیرید**؛ از دست‌دادن/تعویض کلید یا تغییر شناسهٔ بسته مانع نصب به‌روزرسانی روی نسخهٔ موجود می‌شود. شناسهٔ فعلی بسته `org.example.periodictrainer` است. Workflow با هر push یک APK، EXE و asset جداگانهٔ `windows_index.html` می‌سازد و Release ایجاد می‌کند.
 
 ## راه‌اندازی به‌روزرسانی خودکار
 
@@ -76,13 +76,14 @@ base64 -w 0 periodictrainer-release.jks > periodictrainer-release.base64
      "latest_version": "1.0.0",
      "notes": "یادداشت انتشار",
      "windows_url": "https://example.com/downloads/PeriodicTableTrainer.exe",
+     "windows_html_url": "https://example.com/downloads/windows_index.html",
      "android_url": "https://example.com/downloads/app-debug.apk"
    }
    ```
 
-   همهٔ URLها باید HTTPS و مستقیم به فایل دانلودی باشند. آدرس‌های `example.com` فعلی فقط placeholder هستند. اگر Releaseها در GitHub منتشر می‌شوند، می‌توانید URLهای asset نسخهٔ جاری را به شکل `https://github.com/OWNER/REPO/releases/latest/download/PeriodicTableTrainer.exe` و `https://github.com/OWNER/REPO/releases/latest/download/app-debug.apk` قرار دهید و خود `version.json` را جداگانه (مثلاً در GitHub Pages یا raw file) میزبانی کنید.
+   Windows updater از `windows_html_url` استفاده می‌کند؛ `windows_url` فقط برای سازگاری با manifestهای قبلی باقی مانده و دیگر برای آپدیت Windows مصرف نمی‌شود. همهٔ URLهای مصرف‌شده باید HTTPS و مستقیم به فایل دانلودی باشند. آدرس‌های `example.com` فعلی فقط placeholder هستند. اگر Releaseها در GitHub منتشر می‌شوند، نشانی asset رابط ویندوز را به شکل `https://github.com/OWNER/REPO/releases/latest/download/windows_index.html` و APK را به شکل `https://github.com/OWNER/REPO/releases/latest/download/app-debug.apk` تنظیم کنید و خود `version.json` را جداگانه (مثلاً در GitHub Pages یا raw file) میزبانی کنید.
 3. برای انتشار نسخهٔ بعدی، نسخه را در `update_config.py`، `buildozer.spec` و ثابت `CURRENT_APP_VERSION` در `windows_index.html` و `mobile_index.html` افزایش دهید؛ سپس `latest_version` و یادداشت‌ها را در manifest به‌روز کنید. نسخهٔ نمایشی/نام‌گذاری‌شده را نیز در `buildozer.spec` افزایش دهید؛ Workflow کد عددی Android را به صورت افزایشی تعیین می‌کند.
-4. Windows فایل EXE را کنار برنامه با نام `new_app.exe` دریافت می‌کند و `update.bat` را برای جایگزینی و اجرای دوباره می‌سازد. Android فایل APK را در فضای خصوصی برنامه دانلود و با `FileProvider` به نصب‌کنندهٔ سیستم تحویل می‌دهد؛ کاربر باید نصب را تأیید کند و در اولین نصب از این مسیر ممکن است اجازهٔ **Install from Unknown Sources** لازم باشد.
+4. Windows فقط رابط را از `windows_html_url` کنار برنامه با نام `new_index.html` دریافت می‌کند. `update.bat` پس از بستن برنامه، HTML قبلی را به `windows_index_old.html` می‌چرخاند، فایل جدید را جایگزین و EXE را دوباره اجرا می‌کند؛ خود EXE دانلود یا جایگزین نمی‌شود. فایل بیرونی `windows_index.html` در پوشهٔ EXE بر نسخهٔ داخلی اولویت دارد و در نبود آن، برنامه از نسخهٔ داخل EXE استفاده می‌کند. Android فایل APK را در فضای خصوصی برنامه دانلود و با `FileProvider` به نصب‌کنندهٔ سیستم تحویل می‌دهد؛ کاربر باید نصب را تأیید کند و در اولین نصب از این مسیر ممکن است اجازهٔ **Install from Unknown Sources** لازم باشد.
 
 برای حفظ اطلاعات Android هنگام نصب روی نسخهٔ قبلی، `package ID` و کلید امضای release باید ثابت بمانند. فایل‌های رکورد جداگانه در فضای خصوصی برنامه نگهداری می‌شوند؛ نصب APK با امضای متفاوت، نصب درجا را مسدود می‌کند.
 
