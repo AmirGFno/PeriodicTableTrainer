@@ -88,8 +88,15 @@ jobs:
 
       - name: Build Android APK with Buildozer-managed NDK 25b
         run: |
-          # buildozer.spec pins android.ndk=25b; let Buildozer download/cache that exact NDK.
+          set -euo pipefail
+          # Use JDK 17 (the runner's default JAVA_HOME in the failed run was JDK 11).
+          export JAVA_HOME="${JAVA_HOME_17_X64}"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          java -version
           python --version
+          # GitHub injects NDK 27 in ANDROID_NDK*; remove those overrides so
+          # Buildozer/p4a use the 25b selected by buildozer.spec (ANDROIDNDK).
+          unset ANDROID_NDK ANDROID_NDK_HOME ANDROID_NDK_ROOT || true
           buildozer -v android debug
 
       - name: Sign APK with the persistent release key

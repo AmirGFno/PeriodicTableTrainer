@@ -27,9 +27,13 @@ android.enable_androidx = True
 android.add_resources = %(source.dir)s/data/update_file_paths.xml:xml/update_file_paths.xml
 p4a.hook = %(source.dir)s/p4a_hook.py
 android.api = 36
-android.minapi = 23
+# preadv/pwritev are declared from Android API 24; compiling with --ndk-api=23 fails.
+# This raises the minimum supported Android version from API 23 to API 24.
+android.minapi = 24
+android.ndk_api = 24
 android.ndk = 25b
 android.archs = arm64-v8a
 android.private_storage = True
 android.accept_sdk_license = True
 p4a.branch = develop
+log_level = 2

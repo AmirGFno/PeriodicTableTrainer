@@ -42,7 +42,7 @@ pyinstaller --noconfirm --clean --onefile --windowed --name "PeriodicTableTraine
 
 ### Android (APK)
 
-Buildozer به Linux/WSL و Android SDK/NDK نیاز دارد. در ریشهٔ پروژه:
+Buildozer به Linux/WSL و Android SDK/NDK نیاز دارد. ساخت CI با Python 3.10، NDK 25b و معماری `arm64-v8a` انجام می‌شود. حداقل Android API روی 24 تنظیم شده، چون کد `remote_debugging` از `preadv`/`pwritev` استفاده می‌کند که در API 23 موجود نیست. در ریشهٔ پروژه:
 
 ```bash
 python3 -m pip install --upgrade pip setuptools wheel
