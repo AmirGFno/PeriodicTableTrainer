@@ -42,7 +42,7 @@ pyinstaller --noconfirm --clean --onefile --windowed --name "PeriodicTableTraine
 
 ### Android (APK)
 
-Buildozer به Linux/WSL و Android SDK/NDK نیاز دارد. ساخت CI با Python 3.10، NDK 25b و معماری `arm64-v8a` انجام می‌شود. حداقل Android API روی 24 تنظیم شده، چون کد `remote_debugging` از `preadv`/`pwritev` استفاده می‌کند که در API 23 موجود نیست. workflow مخزن، checkout خود p4a را پیش از build اصلاح می‌کند تا recipeِ `libthorvg` هر دو چیدمان `lib/clang` و `lib64/clang` را پیدا کند. برای build محلی نیز این آماده‌سازی را انجام دهید:
+Buildozer به Linux/WSL و Android SDK/NDK نیاز دارد. ساخت CI با Python اجرایی 3.10، Python مقصد و `hostpython3` هر دو روی 3.10.22، NDK 25b و معماری `arm64-v8a` انجام می‌شود. نسخه‌های مقصد و host صریحاً در `buildozer.spec` pin شده‌اند، چون p4a `develop` اکنون به‌طور پیش‌فرض Python 3.14 می‌سازد و آن با Cython 0.29.36 این پروژه سازگار نیست. حداقل Android API روی 24 تنظیم شده، چون کد `remote_debugging` از `preadv`/`pwritev` استفاده می‌کند که در API 23 موجود نیست. workflow مخزن، checkout خود p4a را پیش از build اصلاح می‌کند تا recipeِ `libthorvg` هر دو چیدمان `lib/clang` و `lib64/clang` را پیدا کند. برای build محلی نیز این آماده‌سازی را انجام دهید:
 
 ```bash
 python3 -m pip install --upgrade pip setuptools wheel
