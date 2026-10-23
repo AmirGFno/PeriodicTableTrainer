@@ -41,6 +41,16 @@ public class PeriodicTrainerNativePlugin extends Plugin {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean updateRunning = new AtomicBoolean(false);
 
+    private String appVersion() {
+        try {
+            String version = getContext().getPackageManager()
+                .getPackageInfo(getContext().getPackageName(), 0).versionName;
+            return version == null ? "0.0.0" : version;
+        } catch (Exception error) {
+            throw new IllegalStateException("Could not read installed app version", error);
+        }
+    }
+
     @PluginMethod
     public void backupData(PluginCall call) {
         String payload = call.getString("payload");
@@ -93,10 +103,10 @@ public class PeriodicTrainerNativePlugin extends Plugin {
             try {
                 JSONObject manifest = fetchManifest();
                 String latest = manifest.getString("latest_version");
-                boolean available = compareVersions(latest, BuildConfig.VERSION_NAME) > 0;
+                boolean available = compareVersions(latest, appVersion()) > 0;
                 JSObject result = new JSObject();
                 result.put("available", available);
-                result.put("current_version", BuildConfig.VERSION_NAME);
+                result.put("current_version", appVersion());
                 result.put("latest_version", latest);
                 result.put("notes", manifest.optString("notes", ""));
                 if (available) result.put("android_url", requireHttps(manifest.optString("android_url", "")));
@@ -148,7 +158,7 @@ public class PeriodicTrainerNativePlugin extends Plugin {
         emitProgress(0, "در حال بررسی نسخهٔ جدید Android...");
         JSONObject manifest = fetchManifest();
         String latest = manifest.getString("latest_version");
-        if (compareVersions(latest, BuildConfig.VERSION_NAME) <= 0) {
+        if (compareVersions(latest, appVersion()) <= 0) {
             throw new IllegalStateException("نسخهٔ جدیدی برای Android موجود نیست.");
         }
         String apkUrl = requireHttps(manifest.optString("android_url", ""));
@@ -236,7 +246,7 @@ public class PeriodicTrainerNativePlugin extends Plugin {
         connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
         connection.setReadTimeout(READ_TIMEOUT_MS);
         connection.setInstanceFollowRedirects(true);
-        connection.setRequestProperty("User-Agent", "PeriodicTableTrainer/" + BuildConfig.VERSION_NAME);
+        connection.setRequestProperty("User-Agent", "PeriodicTableTrainer/" + appVersion());
         int code = connection.getResponseCode();
         if (code < 200 || code >= 300) {
             connection.disconnect();
