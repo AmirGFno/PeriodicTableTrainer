@@ -72,9 +72,10 @@ jobs:
           distribution: "zulu"
           java-version: "17"
 
-      - name: Install Dependencies
+      - name: Install Dependencies and icon tooling
         run: |
           npm ci
+          python3 -m pip install --disable-pip-version-check "Pillow>=10,<13"
           cp mobile_index.html www/index.html
           npx cap add android
           python3 capacitor/scripts/prepare_android.py

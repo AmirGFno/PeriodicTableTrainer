@@ -8,12 +8,12 @@
 - `windows_app.py`, `windows_index.html`, `update_config.py` — برنامه و رابط ویندوز و تنظیمات به‌روزرسانی HTML.
 - `mobile_index.html`, `www/index.html` — رابط Capacitor؛ در انتشار اندروید، `www/index.html` از `mobile_index.html` ساخته/همگام می‌شود.
 - `capacitor.config.json`, `package.json`, `package-lock.json` — پیکربندی و وابستگی‌های Capacitor.
-- `capacitor/native/PeriodicTrainerNativePlugin.java`, `capacitor/scripts/prepare_android.py` — پل بومی اندروید برای پشتیبان‌گیری، بررسی نسخه و نصب به‌روزرسانی.
-- `.github/workflows/build.yml` — ساخت EXE ویندوز و APK امضاشدهٔ Capacitor.
+- `capacitor/native/PeriodicTrainerNativePlugin.java`, `capacitor/scripts/prepare_android.py` — پل بومی اندروید برای پشتیبان‌گیری، بررسی نسخه، نصب به‌روزرسانی و ساخت آیکون‌های لانچر از لوگوی شفاف اندروید.
+- `.github/workflows/build.yml` — ساخت EXE ویندوز و APK امضاشدهٔ Capacitor؛ Pillow فقط برای تولید منابع آیکون APK در مرحلهٔ build نصب می‌شود.
 - `version.json` — manifest نسخه و نشانی‌های به‌روزرسانی.
-- `app.ico` — آیکون بسته‌بندی ویندوز.
+- `windows_logo.png` — لوگوی دایره‌ای با گرادیان چندرنگ و بیرونِ دایرهٔ شفاف؛ `app.ico` نسخهٔ ۲۵۶×۲۵۶ آن برای EXE ویندوز است.
+- `app_logo.png` — لوگوی اندرویدِ مشکی/نارنجی با پس‌زمینهٔ شفاف؛ اسکریپت build آن را به آیکون‌های launcher و adaptive icon تبدیل می‌کند.
 - `convert_fonts.py`, `font_sources/` — منابع و ابزار بازتولید فونت‌های تعبیه‌شده.
-- `app_logo.png` — فایل منبع هویت بصری؛ نسخهٔ تکراری باینری `windows_logo.png` حذف شده است.
 
 فایل ریشهٔ `index.html` دست‌نخورده نگه داشته شده است؛ منبع نسخهٔ وب جاری `web_index.html` است.
 
@@ -34,6 +34,7 @@ pyinstaller --noconfirm --clean --onefile --windowed --name "PeriodicTableTraine
 
 ```bash
 npm ci
+python3 -m pip install "Pillow>=10,<13"
 cp mobile_index.html www/index.html
 npx cap add android
 python3 capacitor/scripts/prepare_android.py
