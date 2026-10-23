@@ -155,7 +155,7 @@ class BackupApi:
         self._eval_js(f"window.showUpdateError({json.dumps(message, ensure_ascii=False)})")
 
     def update_windows(self) -> dict[str, Any]:
-        """Download the new EXE, then hand off replacement to update.bat."""
+        """Download the replaceable HTML, then hand off its swap to update.bat."""
         if not getattr(sys, "frozen", False):
             return {"ok": False, "error": "به‌روزرسانی خودکار فقط در نسخهٔ EXE فعال است."}
         with self._update_lock:
@@ -220,20 +220,31 @@ class BackupApi:
             bat.write_text(
                 "@echo off\r\n"
                 "cd /d \"%~dp0\"\r\n"
-                "timeout /t 2 /nobreak > NUL\r\n"
+                "timeout /t 3 /nobreak > NUL\r\n"
                 f"taskkill /f /im {EXE_NAME} > NUL 2>&1\r\n"
-                "timeout /t 1 /nobreak > NUL\r\n"
-                "if exist windows_index_old.html del /q windows_index_old.html\r\n"
-                "if exist windows_index.html ren windows_index.html windows_index_old.html\r\n"
-                "ren new_index.html windows_index.html\r\n"
+                "timeout /t 3 /nobreak > NUL\r\n"
+                "if not exist \"new_index.html\" goto launch_old\r\n"
+                "if exist \"windows_index_old.html\" del /q \"windows_index_old.html\"\r\n"
+                "if exist \"windows_index.html\" ren \"windows_index.html\" \"windows_index_old.html\"\r\n"
+                "ren \"new_index.html\" \"windows_index.html\"\r\n"
+                "if errorlevel 1 goto restore_old\r\n"
                 f"start \"\" \"%~dp0{EXE_NAME}\"\r\n"
+                "goto cleanup\r\n"
+                ":restore_old\r\n"
+                "if not exist \"windows_index.html\" if exist \"windows_index_old.html\" ren \"windows_index_old.html\" \"windows_index.html\"\r\n"
+                ":launch_old\r\n"
+                f"if exist \"{EXE_NAME}\" start \"\" \"%~dp0{EXE_NAME}\"\r\n"
+                ":cleanup\r\n"
                 "del \"%~f0\"\r\n",
                 encoding="ascii",
             )
             creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
-            subprocess.Popen(["cmd.exe", "/c", str(bat)], cwd=str(app_dir), creationflags=creationflags, close_fds=True)
+            subprocess.Popen(["cmd.exe", "/c", bat.name], cwd=str(app_dir), creationflags=creationflags, close_fds=True)
             self.restart_requested = True
-            self._progress(100, "به‌روزرسانی رابط آماده است؛ برنامه دوباره اجرا می‌شود.")
+            self._progress(
+                100,
+                "برنامه برای اعمال تغییرات بسته می‌شود. لطفاً چند لحظه صبر کنید و از بستن پنجره‌های سیاه رنگ خودداری کنید.",
+            )
             time.sleep(0.3)
             try:
                 (self._window or webview.active_window()).destroy()

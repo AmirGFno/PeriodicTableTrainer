@@ -40,35 +40,24 @@ pyinstaller --noconfirm --clean --onefile --windowed --name "PeriodicTableTraine
 
 فایل خروجی `dist/PeriodicTableTrainer.exe` است. برای به‌روزرسانی خودکار، برنامه را در پوشه‌ای قرار دهید که کاربر اجازهٔ نوشتن در آن را دارد؛ پوشه‌های محافظت‌شده مثل `Program Files` ممکن است به دسترسی Administrator نیاز داشته باشند.
 
-### Android (APK)
+### Android (APK) — Capacitor
 
-Buildozer به Linux/WSL و Android SDK/NDK نیاز دارد. ساخت CI با Python اجرایی 3.10، Python مقصد و `hostpython3` هر دو روی 3.10.22، NDK 25b و معماری `arm64-v8a` انجام می‌شود. نسخه‌های مقصد و host صریحاً در `buildozer.spec` pin شده‌اند، چون p4a `develop` اکنون به‌طور پیش‌فرض Python 3.14 می‌سازد و آن با Cython 0.29.36 این پروژه سازگار نیست. حداقل Android API روی 24 تنظیم شده، چون کد `remote_debugging` از `preadv`/`pwritev` استفاده می‌کند که در API 23 موجود نیست. workflow مخزن، checkout خود p4a را پیش از build اصلاح می‌کند تا recipeِ `libthorvg` هر دو چیدمان `lib/clang` و `lib64/clang` را پیدا کند. برای build محلی نیز این آماده‌سازی را انجام دهید:
+نسخهٔ Android در GitHub Actions با Node.js 20، Capacitor 6 و Java 17 ساخته می‌شود. فایل `mobile_index.html` پیش از build به `www/index.html` کپی می‌شود؛ اسکریپت `capacitor/scripts/prepare_android.py` پل native را برای پشتیبان‌گیری خصوصی و دریافت/نصب APK ثبت می‌کند. فایل‌های تنظیمات ریشه `package.json` و `capacitor.config.json` هستند. workflow پوشهٔ Android را در هر build تولید می‌کند و `android/app` عمداً در مخزن نگهداری نمی‌شود.
 
-```bash
-python3 -m pip install --upgrade pip setuptools wheel
-python3 -m pip install "Cython==0.29.36" buildozer
-mkdir -p .buildozer/android/platform
-git clone --depth 1 --branch develop https://github.com/kivy/python-for-android.git .buildozer/android/platform/python-for-android
-python3 patch_p4a_libthorvg.py .buildozer/android/platform/python-for-android
-echo "p4a.source_dir = $(pwd)/.buildozer/android/platform/python-for-android" >> buildozer.spec
-cp mobile_app.py android_project/main.py
-cp mobile_index.html android_project/mobile_index.html
-cp update_config.py android_project/update_config.py
-buildozer -v android debug
-```
+**شناسهٔ جدید برنامه `com.amirgfno.periodictrainer` است.** APKهای قبلی Buildozer با شناسهٔ `org.example.periodictrainer` نصب شده‌اند؛ Capacitor با شناسهٔ جدید کنار نسخهٔ قبلی نصب می‌شود و داده‌های آن نسخه به‌طور خودکار منتقل نمی‌شود. پس از نصب نخستین APK Capacitor، برای به‌روزرسانی‌های بعدی همین شناسه و همان release keystore باید حفظ شوند. داده‌های نسخهٔ Capacitor در WebView و یک فایل خصوصی پشتیبان نگهداری می‌شوند. نسخهٔ Android از `package.json` و شمارهٔ build افزایشی GitHub Actions گرفته می‌شود.
 
-APK آزمایشی در پوشهٔ `bin/` ساخته می‌شود. این دستور آن را با کلید debug محلی امضا می‌کند؛ چنین APKای فقط برای آزمون مناسب است و با نسخهٔ release که با کلید CI امضا می‌شود، به‌روزرسانی درجا نخواهد داشت.
+فایل‌های قدیمی `mobile_app.py`، `android_project/`، `buildozer.spec` و patchهای p4a حذف نشده‌اند؛ workflow جدید آن‌ها را برای ساخت Android فراخوانی نمی‌کند. تا زمانی که APK Capacitor روی دستگاه آزمایش نشده، نگه‌داشتن این فایل‌های legacy برای بازگشت امن‌تر است.
 
 ### ساخت Release امضاشده با GitHub Actions
 
-Workflow در `.github/workflows/build.yml` ویندوز، فایل HTML جداگانهٔ ویندوز و Android را می‌سازد/آماده می‌کند و APK را با کلید ثابت release امضا می‌کند. پیش از اجرای آن، یک بار یک کلید خصوصی بسازید و آن را محرمانه نگه دارید:
+Workflow در `.github/workflows/build.yml` نسخهٔ ویندوز را می‌سازد و APK Capacitor را با کلید ثابت release امضا می‌کند. همان چهار secret امضای قبلی استفاده می‌شوند: پیش از اجرای آن، یک بار یک کلید خصوصی بسازید و آن را محرمانه نگه دارید:
 
 ```bash
 keytool -genkeypair -v -keystore periodictrainer-release.jks -alias periodictrainer -keyalg RSA -keysize 2048 -validity 10000
 base64 -w 0 periodictrainer-release.jks > periodictrainer-release.base64
 ```
 
-مقدار base64 و رمزها را در GitHub repository secrets با نام‌های `ANDROID_KEYSTORE_BASE64`، `ANDROID_KEYSTORE_PASSWORD`، `ANDROID_KEY_ALIAS` و `ANDROID_KEY_PASSWORD` ثبت کنید. **فایل keystore و رمزها را commit نکنید و از کلید نسخه‌های قبلی پشتیبان امن بگیرید**؛ از دست‌دادن/تعویض کلید یا تغییر شناسهٔ بسته مانع نصب به‌روزرسانی روی نسخهٔ موجود می‌شود. شناسهٔ فعلی بسته `org.example.periodictrainer` است. Workflow با هر push یک APK، EXE و asset جداگانهٔ `windows_index.html` می‌سازد و Release ایجاد می‌کند.
+مقدار base64 و رمزها را در GitHub repository secrets با نام‌های `ANDROID_KEYSTORE_BASE64`، `ANDROID_KEYSTORE_PASSWORD`، `ANDROID_KEY_ALIAS` و `ANDROID_KEY_PASSWORD` ثبت کنید. **فایل keystore و رمزها را commit نکنید و از کلید release پشتیبان امن بگیرید**؛ پس از اولین نصب Capacitor، تغییر کلید یا شناسه مانع به‌روزرسانی درجا می‌شود. شناسهٔ Capacitor `com.amirgfno.periodictrainer` است؛ شناسهٔ قدیمی Buildozer `org.example.periodictrainer` بود. Workflow با هر push یک APK امضاشده، EXE و asset جداگانهٔ `windows_index.html` می‌سازد و Release ایجاد می‌کند.
 
 ## راه‌اندازی به‌روزرسانی خودکار
 
@@ -86,7 +75,7 @@ base64 -w 0 periodictrainer-release.jks > periodictrainer-release.base64
    ```
 
    Windows updater از `windows_html_url` استفاده می‌کند؛ `windows_url` صرفاً legacy است و در به‌روزرسانی Windows مصرف نمی‌شود. نشانی فعلی HTML از شاخهٔ `main` همین مخزن خوانده می‌شود؛ نشانی APK به آخرین asset انتشار GitHub اشاره می‌کند. برای دریافت APK، workflow باید با موفقیت تمام شده و Release در دسترس باشد؛ برای build خودکار Android نیز GitHub Secrets امضای release را تنظیم کنید.
-3. برای انتشار نسخهٔ بعدی، نسخه را در `update_config.py`، `buildozer.spec` و ثابت `CURRENT_APP_VERSION` در `windows_index.html` و `mobile_index.html` افزایش دهید؛ سپس `latest_version` و یادداشت‌ها را در manifest به‌روز کنید. نسخهٔ نمایشی/نام‌گذاری‌شده را نیز در `buildozer.spec` افزایش دهید؛ Workflow کد عددی Android را به صورت افزایشی تعیین می‌کند.
+3. برای انتشار نسخهٔ بعدی، نسخهٔ `package.json` را افزایش دهید تا `versionName` APK جدید بالا برود؛ `latest_version`، یادداشت‌ها و URLها را در `version.json` نیز به‌روز کنید. نسخهٔ wrapper ویندوز را جداگانه در `update_config.py` و ثابت HTML آن افزایش دهید. Workflow کد عددی APK را از شمارهٔ run می‌گیرد.
 4. Windows فقط رابط را از `windows_html_url` کنار برنامه با نام `new_index.html` دریافت می‌کند. `update.bat` پس از بستن برنامه، HTML قبلی را به `windows_index_old.html` می‌چرخاند، فایل جدید را جایگزین و EXE را دوباره اجرا می‌کند؛ خود EXE دانلود یا جایگزین نمی‌شود. فایل بیرونی `windows_index.html` در پوشهٔ EXE بر نسخهٔ داخلی اولویت دارد و در نبود آن، برنامه از نسخهٔ داخل EXE استفاده می‌کند. Android فایل APK را در فضای خصوصی برنامه دانلود و با `FileProvider` به نصب‌کنندهٔ سیستم تحویل می‌دهد؛ کاربر باید نصب را تأیید کند و در اولین نصب از این مسیر ممکن است اجازهٔ **Install from Unknown Sources** لازم باشد.
 
 برای حفظ اطلاعات Android هنگام نصب روی نسخهٔ قبلی، `package ID` و کلید امضای release باید ثابت بمانند. فایل‌های رکورد جداگانه در فضای خصوصی برنامه نگهداری می‌شوند؛ نصب APK با امضای متفاوت، نصب درجا را مسدود می‌کند.

@@ -1,0 +1,8 @@
+{
+  "appId": "com.amirgfno.periodictrainer",
+  "appName": "PeriodicTableTrainer",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

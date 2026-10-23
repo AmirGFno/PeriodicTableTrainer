@@ -53,100 +53,78 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  android:
-    name: Build Android APK
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
+  build-android:
+    name: Build Android APK (Capacitor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
-      - name: Check out source
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Android/Buildozer system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            git zip unzip openjdk-17-jdk python3.10 python3.10-venv python3-pip \
-            build-essential ccache autoconf libtool pkg-config zlib1g-dev \
-            libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: "3.10"
+          node-version: "20"
 
-      - name: Install Buildozer
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "17"
+
+      - name: Install Dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install "Cython==0.29.36" buildozer
+          npm ci
+          cp mobile_index.html www/index.html
+          npx cap add android
+          python3 capacitor/scripts/prepare_android.py
+          npx cap sync android
 
-      - name: Sync Android entry point and bundled HTML
-        run: |
-          cp mobile_app.py android_project/main.py
-          cp mobile_index.html android_project/mobile_index.html
-          cp update_config.py android_project/update_config.py
-          sed -i "s/^android.numeric_version = .*/android.numeric_version = $((10000000 + $GITHUB_RUN_NUMBER))/" buildozer.spec
-
-      - name: Prepare python-for-android with the NDK r25b libthorvg fix
-        run: |
-          set -euo pipefail
-          p4a_dir="$RUNNER_TEMP/python-for-android"
-          git clone --depth 1 --branch develop https://github.com/kivy/python-for-android.git "$p4a_dir"
-          python patch_p4a_libthorvg.py "$p4a_dir"
-          # Use this patched checkout directly; the prior local-recipe override
-          # was not selected and p4a kept executing its built-in recipe.
-          sed -i '/^p4a.source_dir = /d' buildozer.spec
-          echo "p4a.source_dir = $p4a_dir" >> buildozer.spec
-
-      - name: Build Android APK with Buildozer-managed NDK 25b
+      - name: Select installed Android Build Tools
+        id: android_tools
         run: |
           set -euo pipefail
-          # Use JDK 17 (the runner's default JAVA_HOME in the failed run was JDK 11).
-          export JAVA_HOME="${JAVA_HOME_17_X64}"
-          export PATH="$JAVA_HOME/bin:$PATH"
-          java -version
-          python --version
-          # GitHub injects NDK 27 in ANDROID_NDK*; remove those overrides so
-          # Buildozer/p4a use the 25b selected by buildozer.spec (ANDROIDNDK).
-          unset ANDROID_NDK ANDROID_NDK_HOME ANDROID_NDK_ROOT || true
-          buildozer -v android debug
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$sdk_root"
+          build_tools="$(find "$sdk_root/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -n 1)"
+          test -n "$build_tools"
+          echo "version=$build_tools" >> "$GITHUB_OUTPUT"
 
-      - name: Sign APK with the persistent release key
+      - name: Build Android Release APK (Unsigned)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+
+      - name: Sign APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        with:
+          releaseDirectory: android/app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          BUILD_TOOLS_VERSION: ${{ steps.android_tools.outputs.version }}
+
+      - name: Stage signed APK under the updater's stable filename
         run: |
           set -euo pipefail
-          : "${ANDROID_KEYSTORE_BASE64:?Configure the stable Android signing secrets before building releases}"
-          : "${ANDROID_KEYSTORE_PASSWORD:?Missing ANDROID_KEYSTORE_PASSWORD}"
-          : "${ANDROID_KEY_ALIAS:?Missing ANDROID_KEY_ALIAS}"
-          : "${ANDROID_KEY_PASSWORD:?Missing ANDROID_KEY_PASSWORD}"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > release-signing.jks
-          apk_file="$(find bin -maxdepth 1 -type f -name '*.apk' -print -quit)"
-          test -n "$apk_file"
-          apksigner="$(find "$HOME/.buildozer" -type f -path '*/build-tools/*/apksigner' -print | sort -V | tail -n 1)"
-          test -x "$apksigner"
-          "$apksigner" sign \
-            --ks release-signing.jks \
-            --ks-key-alias "$ANDROID_KEY_ALIAS" \
-            --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
-            --key-pass env:ANDROID_KEY_PASSWORD \
-            --out app-debug.apk "$apk_file"
-          "$apksigner" verify --verbose app-debug.apk
-          rm -f release-signing.jks
+          mkdir -p signed-output
+          cp "${{ steps.sign_app.outputs.signedReleaseFile }}" signed-output/app-debug.apk
 
-      - name: Upload Android artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: app-debug.apk
+          path: signed-output/app-debug.apk
           if-no-files-found: error
           retention-days: 14
 
   release:
     name: Publish build artifacts to GitHub Releases
-    needs: [windows, android]
+    needs: [windows, build-android]
     runs-on: ubuntu-latest
     steps:
       - name: Download build artifacts
@@ -163,6 +141,6 @@ jobs:
           target_commitish: ${{ github.sha }}
           body: |
             Automatically built from commit ${{ github.sha }}.
-            Includes the Windows desktop executable, replaceable Windows HTML interface, and Android APK signed with the configured persistent release key.
+            Includes the Windows desktop executable, replaceable Windows HTML interface, and Android APK built with Capacitor and signed with the configured persistent release key.
           files: release_assets/*
           fail_on_unmatched_files: true

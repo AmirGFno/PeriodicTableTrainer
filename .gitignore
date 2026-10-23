@@ -1,6 +1,3 @@
-periodictrainer-release.jks 
-keystore.txt 
-.venv/ 
-build/ 
-dist/ 
-__pycache__/ 
+node_modules/
+android/
+*.iml
