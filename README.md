@@ -8,11 +8,12 @@
 - `windows_app.py`, `windows_index.html`, `update_config.py` — برنامه و رابط ویندوز و تنظیمات به‌روزرسانی HTML.
 - `mobile_index.html`, `www/index.html` — رابط Capacitor؛ در انتشار اندروید، `www/index.html` از `mobile_index.html` ساخته/همگام می‌شود.
 - `capacitor.config.json`, `package.json`, `package-lock.json` — پیکربندی و وابستگی‌های Capacitor.
-- `capacitor/native/PeriodicTrainerNativePlugin.java`, `capacitor/scripts/prepare_android.py` — پل بومی اندروید برای پشتیبان‌گیری، بررسی نسخه، نصب به‌روزرسانی و ساخت آیکون‌های لانچر از لوگوی شفاف اندروید.
-- `.github/workflows/build.yml` — ساخت EXE ویندوز و APK امضاشدهٔ Capacitor؛ Pillow فقط برای تولید منابع آیکون APK در مرحلهٔ build نصب می‌شود.
+- `capacitor/native/PeriodicTrainerNativePlugin.java`, `capacitor/scripts/prepare_android.py` — پل بومی اندروید برای پشتیبان‌گیری، بررسی نسخه، نصب به‌روزرسانی و ساخت آیکون‌های لانچر.
+- `capacitor/android_icon_background.png`, `capacitor/android_icon_foreground.png` — لایهٔ گرادیان تمام‌صفحه و نشان شفافِ آیکون اندروید.
+- `.github/workflows/build.yml` — ساخت بستهٔ ویندوز به‌شکل onedir و APK امضاشدهٔ Capacitor؛ Pillow برای تولید منابع آیکون APK در مرحلهٔ build نصب می‌شود.
 - `version.json` — manifest نسخه و نشانی‌های به‌روزرسانی.
-- `windows_logo.png` — لوگوی دایره‌ای با گرادیان چندرنگ و بیرونِ دایرهٔ شفاف؛ `app.ico` نسخهٔ ۲۵۶×۲۵۶ آن برای EXE ویندوز است.
-- `app_logo.png` — لوگوی اندرویدِ مشکی/نارنجی با پس‌زمینهٔ شفاف؛ اسکریپت build آن را به آیکون‌های launcher و adaptive icon تبدیل می‌کند.
+- `windows_logo.png` — لوگوی دایره‌ای گرادیانی با بیرون شفاف؛ `app.ico` نسخهٔ ۲۵۶×۲۵۶ آن برای EXE ویندوز است.
+- `app_logo.png` — پیش‌نمایش لوگوی موبایل با همان نشان و گرادیانِ کشیده‌شده تا لبه‌های تصویر.
 - `convert_fonts.py`, `font_sources/` — منابع و ابزار بازتولید فونت‌های تعبیه‌شده.
 
 فایل ریشهٔ `index.html` دست‌نخورده نگه داشته شده است؛ منبع نسخهٔ وب جاری `web_index.html` است.
@@ -23,10 +24,11 @@
 
 ```powershell
 python -m pip install --upgrade pip "pywebview[winforms]" pyinstaller
-pyinstaller --noconfirm --clean --onefile --windowed --name "PeriodicTableTrainer" --icon=app.ico --add-data "windows_index.html;." --collect-all webview --hidden-import=clr windows_app.py
+pyinstaller --noconfirm --clean --onedir --windowed --name "PeriodicTableTrainer" --icon=app.ico --add-data "windows_index.html;." --collect-all webview --hidden-import=clr windows_app.py
+Compress-Archive -Path "dist/PeriodicTableTrainer/*" -DestinationPath "dist/PeriodicTableTrainer-windows.zip" -Force
 ```
 
-خروجی `dist/PeriodicTableTrainer.exe` است. برای به‌روزرسانی HTML، برنامه `windows_html_url` را از `version.json` می‌خواند و فایل جدید را با handoff دسته‌ای جایگزین می‌کند؛ خود EXE دانلود یا جایگزین نمی‌شود. پوشهٔ نصب باید اجازهٔ نوشتن داشته باشد.
+خروجی یک پوشهٔ کامل به‌همراه `PeriodicTableTrainer-windows.zip` است؛ هنگام نصب/جایگزینی، **همهٔ محتویات پوشه را با هم** نگه دارید و فقط EXE را جابه‌جا نکنید. این بسته‌بندی onedir برای جلوگیری از بارگذاری Python DLL از پوشهٔ موقت `_MEI…` به‌کار می‌رود. نسخه‌های قبلی onefile که خطای DLL می‌دهند با به‌روزرسانی HTML خودترمیم نمی‌شوند و باید یک‌بار با بستهٔ کامل جدید جایگزین شوند. به‌روزرسانی درون‌برنامه‌ای همچنان فقط `windows_index.html` را می‌گیرد و خود EXE را دانلود یا جایگزین نمی‌کند. پوشهٔ نصب باید اجازهٔ نوشتن داشته باشد.
 
 ## ساخت Android با Capacitor
 

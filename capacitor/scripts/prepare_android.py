@@ -26,51 +26,49 @@ if not manifest_path.is_file() or not gradle_path.is_file() or len(main_candidat
 
 
 def install_launcher_icons() -> None:
-    """Install the transparent black-and-orange logo in raster and adaptive Android icon slots."""
-    logo_path = ROOT / "app_logo.png"
-    if not logo_path.is_file():
-        raise SystemExit(f"Android logo is missing: {logo_path}")
-    logo = Image.open(logo_path).convert("RGBA")
-    alpha_bounds = logo.getchannel("A").getbbox()
+    """Install full-bleed gradient Android icons and a safe-zone adaptive foreground."""
+    background_path = ROOT / "capacitor/android_icon_background.png"
+    foreground_path = ROOT / "capacitor/android_icon_foreground.png"
+    if not background_path.is_file() or not foreground_path.is_file():
+        raise SystemExit("Android icon background/foreground assets are missing")
+    background_source = Image.open(background_path).convert("RGBA")
+    foreground_source = Image.open(foreground_path).convert("RGBA")
+    alpha_bounds = foreground_source.getchannel("A").getbbox()
     if not alpha_bounds:
-        raise SystemExit("Android logo has no visible pixels")
-    logo = logo.crop(alpha_bounds)
+        raise SystemExit("Android logo foreground has no visible pixels")
+    foreground_source = foreground_source.crop(alpha_bounds)
 
     resources = ANDROID / "app/src/main/res"
     densities = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
     for density, size in densities.items():
         mipmap = resources / f"mipmap-{density}"
         mipmap.mkdir(parents=True, exist_ok=True)
-        for filename, safe_fraction in (
-            ("ic_launcher.png", 0.90),
-            ("ic_launcher_round.png", 0.78),
-            ("ic_launcher_foreground.png", 0.66),
-        ):
-            mark = logo.copy()
+        background = background_source.resize((size, size), Image.Resampling.LANCZOS)
+        background.save(mipmap / "ic_launcher_background.png", format="PNG", optimize=True)
+        for filename, safe_fraction in (("ic_launcher.png", 0.82), ("ic_launcher_round.png", 0.74)):
+            mark = foreground_source.copy()
             max_side = max(1, round(size * safe_fraction))
             mark.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
-            canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-            canvas.alpha_composite(mark, ((size - mark.width) // 2, (size - mark.height) // 2))
-            canvas.save(mipmap / filename, format="PNG", optimize=True)
+            icon = background.copy()
+            icon.alpha_composite(mark, ((size - mark.width) // 2, (size - mark.height) // 2))
+            icon.save(mipmap / filename, format="PNG", optimize=True)
+        mark = foreground_source.copy()
+        max_side = max(1, round(size * 0.66))
+        mark.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+        foreground = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        foreground.alpha_composite(mark, ((size - mark.width) // 2, (size - mark.height) // 2))
+        foreground.save(mipmap / "ic_launcher_foreground.png", format="PNG", optimize=True)
 
     adaptive_dir = resources / "mipmap-anydpi-v26"
     adaptive_dir.mkdir(parents=True, exist_ok=True)
     adaptive_xml = '''<?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/periodictrainer_icon_background" />
+    <background android:drawable="@mipmap/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
 </adaptive-icon>
 '''
     for filename in ("ic_launcher.xml", "ic_launcher_round.xml"):
         (adaptive_dir / filename).write_text(adaptive_xml, encoding="utf-8")
-    values_dir = resources / "values"
-    values_dir.mkdir(parents=True, exist_ok=True)
-    (values_dir / "periodictrainer_icon_background.xml").write_text(
-        '''<?xml version="1.0" encoding="utf-8"?>
-<resources><color name="periodictrainer_icon_background">#00000000</color></resources>
-''',
-        encoding="utf-8",
-    )
 
 
 install_launcher_icons()

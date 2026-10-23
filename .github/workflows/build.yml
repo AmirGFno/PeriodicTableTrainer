@@ -28,20 +28,21 @@ jobs:
       - name: Install packaging tools
         run: python -m pip install --upgrade pip "pywebview[winforms]" pyinstaller
 
-      - name: Build standalone EXE
+      - name: Build Windows folder (no Temp extraction)
         shell: pwsh
-        run: >-
-          pyinstaller --noconfirm --clean --onefile --windowed
-          --name "PeriodicTableTrainer"
-          --icon=app.ico
-          --add-data "windows_index.html;."
-          --collect-all webview --hidden-import=clr windows_app.py
+        run: |
+          pyinstaller --noconfirm --clean --onedir --windowed `
+            --name "PeriodicTableTrainer" `
+            --icon=app.ico `
+            --add-data "windows_index.html;." `
+            --collect-all webview --hidden-import=clr windows_app.py
+          Compress-Archive -Path "dist/PeriodicTableTrainer/*" -DestinationPath "dist/PeriodicTableTrainer-windows.zip" -Force
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-exe
-          path: dist/PeriodicTableTrainer.exe
+          path: dist/PeriodicTableTrainer-windows.zip
           if-no-files-found: error
           retention-days: 14
 

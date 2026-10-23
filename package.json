@@ -1,6 +1,6 @@
 {
   "name": "periodic-table-trainer",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "scripts": {
     "cap:android:add": "cap add android",
