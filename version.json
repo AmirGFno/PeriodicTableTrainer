@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.0.1",
-  "notes": "بروزرسانی رابط کاربری و رفع باگ‌ها",
+  "latest_version": "1.0.2",
+  "notes": "به‌روزرسانی جامع رابط کاربری، بهبود جدول تناوبی و رفع باگ‌ها",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer.exe",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"
