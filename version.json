@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.0.9",
-  "notes": "نسخهٔ ۱.۰.۹: انتقال ناوبری Android به منوی همبرگری و ثابت‌ماندن نوار عنوان هنگام پیمایش.",
+  "latest_version": "1.1.0",
+  "notes": "نسخهٔ ۱.۱.۰: اصلاح نمایش نسخهٔ واقعی رابط ویندوز پس از به‌روزرسانی درون‌برنامه‌ای؛ ساخت Android با API 36 و خروجی AAB برای Google Play.",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer-windows.zip",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"

@@ -63,14 +63,24 @@ def app_directory() -> Path:
     return Path(__file__).resolve().parent
 
 
-def _html_version(path: Path) -> tuple[int, ...] | None:
-    """Read the interface version embedded in an external HTML candidate."""
+def _html_version_text(path: Path) -> str | None:
+    """Return the validated user-interface version embedded in an HTML file."""
     try:
         text = path.read_text(encoding="utf-8")
         match = re.search(r"const\s+CURRENT_APP_VERSION\s*=\s*['\"]([^'\"]+)['\"]", text)
-        return _version_tuple(match.group(1)) if match else None
+        if not match:
+            return None
+        version = match.group(1)
+        _version_tuple(version)
+        return version
     except (OSError, UnicodeError, ValueError):
         return None
+
+
+def _html_version(path: Path) -> tuple[int, ...] | None:
+    """Read the interface version embedded in an external HTML candidate."""
+    version = _html_version_text(path)
+    return _version_tuple(version) if version else None
 
 
 def windows_html_file() -> Path:
@@ -87,6 +97,18 @@ def windows_html_file() -> Path:
     if versioned:
         return max(versioned)[2]
     return existing[0]
+
+
+def current_windows_version() -> str:
+    """Report the version of the HTML actually selected by this installation.
+
+    The EXE can legitimately be older than an HTML-only in-app update. Using
+    APP_VERSION here would make the updater keep reporting the stale EXE version.
+    """
+    try:
+        return _html_version_text(windows_html_file()) or APP_VERSION
+    except (OSError, RuntimeError, ValueError):
+        return APP_VERSION
 
 
 def fetch_version_manifest() -> dict[str, Any]:
@@ -142,10 +164,11 @@ class BackupApi:
         try:
             manifest = fetch_version_manifest()
             latest = str(manifest["latest_version"])
-            available = _version_tuple(latest) > _version_tuple(APP_VERSION)
+            current = current_windows_version()
+            available = _version_tuple(latest) > _version_tuple(current)
             result = {
                 "available": available,
-                "current_version": APP_VERSION,
+                "current_version": current,
                 "latest_version": latest,
                 "notes": str(manifest.get("notes", "")),
             }
@@ -221,7 +244,8 @@ class BackupApi:
             self._progress(0, "در حال دانلود بروزرسانی... لطفاً برنامه را نبندید")
             manifest = fetch_version_manifest()
             latest = str(manifest["latest_version"])
-            if _version_tuple(latest) <= _version_tuple(APP_VERSION):
+            current = current_windows_version()
+            if _version_tuple(latest) <= _version_tuple(current):
                 raise ValueError("نسخهٔ جدیدی برای ویندوز موجود نیست.")
             url = _https_url(manifest.get("windows_html_url"))
             app_dir = app_directory()

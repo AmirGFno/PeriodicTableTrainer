@@ -20,9 +20,19 @@ if not VERSION_CODE.isdigit() or int(VERSION_CODE) < 1:
 
 manifest_path = ANDROID / "app/src/main/AndroidManifest.xml"
 gradle_path = ANDROID / "app/build.gradle"
+variables_path = ANDROID / "variables.gradle"
 main_candidates = list((ANDROID / "app/src/main/java").rglob("MainActivity.java"))
-if not manifest_path.is_file() or not gradle_path.is_file() or len(main_candidates) != 1:
+if not manifest_path.is_file() or not gradle_path.is_file() or not variables_path.is_file() or len(main_candidates) != 1:
     raise SystemExit("Capacitor Android project not found; run `npx cap add android` first")
+
+# Google Play submissions from 2026-08-31 require Android 16 / API 36.
+variables = variables_path.read_text(encoding="utf-8")
+for setting, value in (("minSdkVersion", 24), ("compileSdkVersion", 36), ("targetSdkVersion", 36)):
+    pattern = re.compile(rf"(?m)^([ \t]*{setting}[ \t]*=[ \t]*)\d+[ \t]*$")
+    variables, count = pattern.subn(rf"\g<1>{value}", variables, count=1)
+    if count != 1:
+        raise SystemExit(f"Could not set {setting}={value} in generated Android variables.gradle")
+variables_path.write_text(variables, encoding="utf-8")
 
 
 def install_launcher_icons() -> None:
@@ -138,8 +148,8 @@ if 'name="periodic_trainer_updates"' not in paths_xml:
     file_paths.write_text(paths_xml, encoding="utf-8")
 
 gradle = gradle_path.read_text(encoding="utf-8")
-code_pattern = re.compile(r"(?m)^(\s*versionCode\s+)\d+\s*$")
-name_pattern = re.compile(r"(?m)^(\s*versionName\s+)[\"'][^\"']*[\"']\s*$")
+code_pattern = re.compile(r"(?m)^(\s*versionCode\s*=?\s*)\d+\s*$")
+name_pattern = re.compile(r"(?m)^(\s*versionName\s*=?\s*)[\"'][^\"']*[\"']\s*$")
 gradle, code_count = code_pattern.subn(rf"\g<1>{VERSION_CODE}", gradle, count=1)
 gradle, name_count = name_pattern.subn(rf'\g<1>"{APP_VERSION}"', gradle, count=1)
 if code_count != 1 or name_count != 1:
@@ -149,6 +159,6 @@ if "androidx.core:core:" not in gradle:
     if not dependency_block:
         raise SystemExit("Could not find dependencies block in generated app/build.gradle")
     insert_at = dependency_block.end()
-    gradle = gradle[:insert_at] + "\n    implementation 'androidx.core:core:1.13.1'" + gradle[insert_at:]
+    gradle = gradle[:insert_at] + "\n    implementation 'androidx.core:core:1.17.0'" + gradle[insert_at:]
 gradle_path.write_text(gradle, encoding="utf-8")
 print(f"Registered PeriodicTrainerNative and transparent launcher icons for {APP_ID}; version {APP_VERSION} ({VERSION_CODE}).")
