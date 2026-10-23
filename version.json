@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.0.5",
-  "notes": "نسخهٔ ۱.۰.۵: نصب‌کنندهٔ ویندوز برای نصب در Program Files و ساخت میان‌بر دسکتاپ، به‌روزرسانی HTML بدون دست‌کاری EXE، و کوچک‌تر شدن نشان Android برای فاصلهٔ بهتر از لبه‌ها.",
+  "latest_version": "1.0.6",
+  "notes": "نسخهٔ ۱.۰.۶: فاصله‌گذاری گزینه‌های تنظیم بازی در همهٔ نسخه‌ها.",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer-windows.zip",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"
