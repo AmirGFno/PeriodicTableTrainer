@@ -124,6 +124,79 @@ def fetch_version_manifest() -> dict[str, Any]:
     return manifest
 
 
+def _update_batch_script(working_dir: str, exe_path: str) -> str:
+    """Generate a guarded AppData HTML swap and verified app restart batch."""
+    return f"""@echo off
+chcp 65001 >NUL
+setlocal EnableExtensions
+cd /d "%~dp0"
+
+rem Give the WebView time to close, then force-close any remaining instance.
+timeout /t 3 /nobreak >NUL
+taskkill /f /im {EXE_NAME} >NUL 2>&1
+set "RETRIES=0"
+:wait_for_exit
+tasklist /FI "IMAGENAME eq {EXE_NAME}" 2>NUL | find /I "{EXE_NAME}" >NUL
+if errorlevel 1 goto process_closed
+set /a RETRIES+=1
+if %RETRIES% GEQ 20 goto exit_timeout
+timeout /t 1 /nobreak >NUL
+goto wait_for_exit
+
+:exit_timeout
+echo The old app did not exit; update swap was cancelled.
+goto cleanup
+
+:process_closed
+if not exist "new_index.html" goto launch_fallback
+if exist "windows_index_old.html" del /q "windows_index_old.html"
+if not exist "windows_index.html" goto move_downloaded_html
+ren "windows_index.html" "windows_index_old.html"
+if errorlevel 1 goto restore_old
+
+:move_downloaded_html
+ren "new_index.html" "windows_index.html"
+if errorlevel 1 goto restore_old
+if not exist "windows_index.html" goto restore_old
+
+rem Start the EXE again; it selects the highest-version HTML from AppData.
+start "" /D "{working_dir}" "{exe_path}"
+set "RETRIES=0"
+:wait_for_new_app
+timeout /t 1 /nobreak >NUL
+tasklist /FI "IMAGENAME eq {EXE_NAME}" 2>NUL | find /I "{EXE_NAME}" >NUL
+if not errorlevel 1 goto update_started
+set /a RETRIES+=1
+if %RETRIES% GEQ 20 goto new_app_failed
+goto wait_for_new_app
+
+:update_started
+if exist "windows_index_old.html" del /q "windows_index_old.html"
+goto cleanup
+
+:new_app_failed
+echo The updated app did not start; restoring the previous HTML.
+taskkill /f /im {EXE_NAME} >NUL 2>&1
+timeout /t 2 /nobreak >NUL
+
+:restore_old
+if exist "windows_index_old.html" (
+  if exist "windows_index.html" del /q "windows_index.html"
+  ren "windows_index_old.html" "windows_index.html"
+)
+if exist "new_index.html" del /q "new_index.html"
+goto launch_fallback
+
+:launch_fallback
+rem If no AppData HTML exists, the installed/bundled copy remains available.
+if exist "{exe_path}" start "" /D "{working_dir}" "{exe_path}"
+
+:cleanup
+del /q "%~f0"
+endlocal
+"""
+
+
 class BackupApi:
     """Methods exposed to JavaScript by pywebview."""
 
@@ -252,33 +325,17 @@ class BackupApi:
             data_dir = app_data_dir()
             new_html = data_dir / "new_index.html"
             self._download_html(url, new_html, manifest.get("windows_html_sha256"))
+            downloaded_version = _html_version_text(new_html)
+            if not downloaded_version or _version_tuple(downloaded_version) != _version_tuple(latest):
+                new_html.unlink(missing_ok=True)
+                raise ValueError("نسخهٔ HTML دانلودشده با version.json یکسان نیست؛ جابه‌جایی لغو شد.")
 
             # Install folders such as Program Files are protected. Keep the
             # replaceable HTML in per-user AppData, then restart the same EXE.
             bat = data_dir / "update.bat"
             exe_path = str(app_dir / EXE_NAME)
             working_dir = str(app_dir)
-            bat.write_text(
-                "@echo off\r\n"
-                "cd /d \"%~dp0\"\r\n"
-                "timeout /t 3 /nobreak > NUL\r\n"
-                f"taskkill /f /im {EXE_NAME} > NUL 2>&1\r\n"
-                "timeout /t 3 /nobreak > NUL\r\n"
-                "if not exist \"new_index.html\" goto launch_old\r\n"
-                "if exist \"windows_index_old.html\" del /q \"windows_index_old.html\"\r\n"
-                "if exist \"windows_index.html\" ren \"windows_index.html\" \"windows_index_old.html\"\r\n"
-                "ren \"new_index.html\" \"windows_index.html\"\r\n"
-                "if errorlevel 1 goto restore_old\r\n"
-                f"start \"\" /D \"{working_dir}\" \"{exe_path}\"\r\n"
-                "goto cleanup\r\n"
-                ":restore_old\r\n"
-                "if not exist \"windows_index.html\" if exist \"windows_index_old.html\" ren \"windows_index_old.html\" \"windows_index.html\"\r\n"
-                ":launch_old\r\n"
-                f"if exist \"{exe_path}\" start \"\" /D \"{working_dir}\" \"{exe_path}\"\r\n"
-                ":cleanup\r\n"
-                "del \"%~f0\"\r\n",
-                encoding="ascii",
-            )
+            bat.write_text(_update_batch_script(working_dir, exe_path), encoding="utf-8", newline="")
             creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
             subprocess.Popen(["cmd.exe", "/c", bat.name], cwd=str(data_dir), creationflags=creationflags, close_fds=True)
             self.restart_requested = True

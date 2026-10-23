@@ -31,36 +31,65 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup --yes --no-progress
 
-      - name: Build Windows installer package (onedir, no Temp extraction)
+      - name: Build Windows application (onedir, no Temp extraction)
         shell: pwsh
         run: |
-          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           pyinstaller --noconfirm --clean --onedir --windowed `
             --name "PeriodicTableTrainer" `
             --icon=app.ico `
             --add-data "windows_index.html;." `
             --collect-all webview --hidden-import=clr windows_app.py
           if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
-          # Keep a replaceable external HTML copy beside the EXE; the updater's
-          # writable per-user copy takes precedence after an in-app HTML update.
+          # Keep a replaceable external HTML copy beside the EXE; AppData HTML
+          # from the updater takes precedence on the next launch.
           Copy-Item "windows_index.html" "dist/PeriodicTableTrainer/windows_index.html" -Force
-          if (-not $env:WINDOWS_SIGNING_CERTIFICATE_BASE64 -or -not $env:WINDOWS_SIGNING_CERTIFICATE_PASSWORD) {
-            throw "Add WINDOWS_SIGNING_CERTIFICATE_BASE64 and WINDOWS_SIGNING_CERTIFICATE_PASSWORD to GitHub Actions secrets before releasing."
+
+      - name: Detect optional Windows Authenticode certificate
+        id: windows_signing
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
+          WINDOWS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
+        run: |
+          $hasCertificate = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_CERTIFICATE_BASE64)
+          $hasPassword = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_CERTIFICATE_PASSWORD)
+          if ($hasCertificate -ne $hasPassword) {
+            throw "Set both Windows signing secrets or leave both empty."
           }
+          if ($hasCertificate) {
+            "enabled=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          } else {
+            Write-Warning "No Windows signing certificate configured; continuing with an unsigned EXE and installer. SmartScreen may show its warning."
+            "enabled=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          }
+
+      - name: Sign Windows application EXE (optional)
+        if: ${{ steps.windows_signing.outputs.enabled == 'true' }}
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
+          WINDOWS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
+        run: |
           $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Filter signtool.exe -File -Recurse |
             Where-Object { $_.FullName -match '\\x64\\signtool.exe$' } |
             Sort-Object FullName -Descending | Select-Object -First 1
           if (-not $signtool) { throw "Windows SDK signtool.exe was not found" }
           $certificatePath = Join-Path $env:RUNNER_TEMP "PeriodicTableTrainer-signing.pfx"
           [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:WINDOWS_SIGNING_CERTIFICATE_BASE64.Trim()))
-          $signFile = {
-            param([string]$Path)
-            & $signtool.FullName sign /fd SHA256 /tr "http://timestamp.digicert.com" /td SHA256 /f $certificatePath /p $env:WINDOWS_SIGNING_CERTIFICATE_PASSWORD $Path
-            if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed: $Path" }
-            & $signtool.FullName verify /pa /v $Path
-            if ($LASTEXITCODE -ne 0) { throw "Authenticode signature verification failed: $Path" }
+          try {
+            $file = "dist/PeriodicTableTrainer/PeriodicTableTrainer.exe"
+            & $signtool.FullName sign /fd SHA256 /tr "http://timestamp.digicert.com" /td SHA256 /f $certificatePath /p $env:WINDOWS_SIGNING_CERTIFICATE_PASSWORD $file
+            if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed: $file" }
+            & $signtool.FullName verify /pa /v $file
+            if ($LASTEXITCODE -ne 0) { throw "Authenticode signature verification failed: $file" }
+          } finally {
+            Remove-Item $certificatePath -Force -ErrorAction SilentlyContinue
           }
-          & $signFile "dist/PeriodicTableTrainer/PeriodicTableTrainer.exe"
+
+      - name: Build Windows installer with Inno Setup
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           New-Item -ItemType Directory -Force "dist/installer" | Out-Null
           $programFilesX86 = [Environment]::GetFolderPath('ProgramFilesX86')
           $candidates = @((Join-Path $programFilesX86 'Inno Setup 6/ISCC.exe'), (Join-Path $env:ProgramFiles 'Inno Setup 6/ISCC.exe'))
@@ -70,15 +99,41 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed" }
           $setup = "dist/installer/PeriodicTableTrainer-Setup-$version.exe"
           if (-not (Test-Path $setup)) { throw "Setup executable was not created: $setup" }
-          & $signFile $setup
-          Remove-Item $certificatePath -Force
+
+      - name: Sign Windows installer (optional)
+        if: ${{ steps.windows_signing.outputs.enabled == 'true' }}
+        shell: pwsh
+        env:
+          WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
+          WINDOWS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
+        run: |
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Filter signtool.exe -File -Recurse |
+            Where-Object { $_.FullName -match '\\x64\\signtool.exe$' } |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signtool) { throw "Windows SDK signtool.exe was not found" }
+          $certificatePath = Join-Path $env:RUNNER_TEMP "PeriodicTableTrainer-signing.pfx"
+          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:WINDOWS_SIGNING_CERTIFICATE_BASE64.Trim()))
+          try {
+            $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+            $file = "dist/installer/PeriodicTableTrainer-Setup-$version.exe"
+            & $signtool.FullName sign /fd SHA256 /tr "http://timestamp.digicert.com" /td SHA256 /f $certificatePath /p $env:WINDOWS_SIGNING_CERTIFICATE_PASSWORD $file
+            if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed: $file" }
+            & $signtool.FullName verify /pa /v $file
+            if ($LASTEXITCODE -ne 0) { throw "Authenticode signature verification failed: $file" }
+          } finally {
+            Remove-Item $certificatePath -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Package Windows installer ZIP
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $setup = "dist/installer/PeriodicTableTrainer-Setup-$version.exe"
+          if (-not (Test-Path $setup)) { throw "Setup executable is missing: $setup" }
           New-Item -ItemType Directory -Force "dist/windows-package" | Out-Null
           Copy-Item $setup "dist/windows-package/"
           Copy-Item "installer/Readme.txt" "dist/windows-package/Readme.txt"
           Compress-Archive -Path "dist/windows-package/*" -DestinationPath "dist/PeriodicTableTrainer-windows.zip" -Force
-        env:
-          WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
-          WINDOWS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
 
       - name: Upload Windows installer ZIP
         uses: actions/upload-artifact@v4
