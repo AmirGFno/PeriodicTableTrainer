@@ -1,4 +1,4 @@
-name: Build Windows EXE and Android APK
+name: Build Windows Installer and Android APK
 
 on:
   push:
@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   windows:
-    name: Build Windows EXE
+    name: Build Windows Installer
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -28,20 +28,40 @@ jobs:
       - name: Install packaging tools
         run: python -m pip install --upgrade pip "pywebview[winforms]" pyinstaller
 
-      - name: Build Windows folder (no Temp extraction)
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build Windows installer package (onedir, no Temp extraction)
         shell: pwsh
         run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           pyinstaller --noconfirm --clean --onedir --windowed `
             --name "PeriodicTableTrainer" `
             --icon=app.ico `
             --add-data "windows_index.html;." `
             --collect-all webview --hidden-import=clr windows_app.py
-          Compress-Archive -Path "dist/PeriodicTableTrainer/*" -DestinationPath "dist/PeriodicTableTrainer-windows.zip" -Force
+          if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
+          # Keep a replaceable external HTML copy beside the EXE; the updater's
+          # writable per-user copy takes precedence after an in-app HTML update.
+          Copy-Item "windows_index.html" "dist/PeriodicTableTrainer/windows_index.html" -Force
+          New-Item -ItemType Directory -Force "dist/installer" | Out-Null
+          $programFilesX86 = [Environment]::GetFolderPath('ProgramFilesX86')
+          $candidates = @((Join-Path $programFilesX86 'Inno Setup 6/ISCC.exe'), (Join-Path $env:ProgramFiles 'Inno Setup 6/ISCC.exe'))
+          $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "Inno Setup compiler was not found" }
+          & $iscc "/DMyAppVersion=$version" "installer/PeriodicTableTrainer.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed" }
+          $setup = "dist/installer/PeriodicTableTrainer-Setup-$version.exe"
+          if (-not (Test-Path $setup)) { throw "Setup executable was not created: $setup" }
+          New-Item -ItemType Directory -Force "dist/windows-package" | Out-Null
+          Copy-Item $setup "dist/windows-package/"
+          Copy-Item "installer/Readme.txt" "dist/windows-package/Readme.txt"
+          Compress-Archive -Path "dist/windows-package/*" -DestinationPath "dist/PeriodicTableTrainer-windows.zip" -Force
 
-      - name: Upload Windows artifact
+      - name: Upload Windows installer ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: windows-exe
+          name: windows-installer-zip
           path: dist/PeriodicTableTrainer-windows.zip
           if-no-files-found: error
           retention-days: 14
@@ -143,6 +163,6 @@ jobs:
           target_commitish: ${{ github.sha }}
           body: |
             Automatically built from commit ${{ github.sha }}.
-            Includes the Windows desktop executable, replaceable Windows HTML interface, and Android APK built with Capacitor and signed with the configured persistent release key.
+            Includes the Windows installer ZIP (Program Files installation and desktop shortcut), replaceable Windows HTML interface, and Android APK built with Capacitor and signed with the configured persistent release key.
           files: release_assets/*
           fail_on_unmatched_files: true

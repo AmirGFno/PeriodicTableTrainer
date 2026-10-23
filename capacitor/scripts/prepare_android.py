@@ -45,7 +45,7 @@ def install_launcher_icons() -> None:
         mipmap.mkdir(parents=True, exist_ok=True)
         background = background_source.resize((size, size), Image.Resampling.LANCZOS)
         background.save(mipmap / "ic_launcher_background.png", format="PNG", optimize=True)
-        for filename, safe_fraction in (("ic_launcher.png", 0.82), ("ic_launcher_round.png", 0.74)):
+        for filename, safe_fraction in (("ic_launcher.png", 0.68), ("ic_launcher_round.png", 0.62)):
             mark = foreground_source.copy()
             max_side = max(1, round(size * safe_fraction))
             mark.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
@@ -53,7 +53,7 @@ def install_launcher_icons() -> None:
             icon.alpha_composite(mark, ((size - mark.width) // 2, (size - mark.height) // 2))
             icon.save(mipmap / filename, format="PNG", optimize=True)
         mark = foreground_source.copy()
-        max_side = max(1, round(size * 0.66))
+        max_side = max(1, round(size * 0.56))
         mark.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
         foreground = Image.new("RGBA", (size, size), (0, 0, 0, 0))
         foreground.alpha_composite(mark, ((size - mark.width) // 2, (size - mark.height) // 2))

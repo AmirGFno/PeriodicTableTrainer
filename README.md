@@ -10,7 +10,7 @@
 - `capacitor.config.json`, `package.json`, `package-lock.json` — پیکربندی و وابستگی‌های Capacitor.
 - `capacitor/native/PeriodicTrainerNativePlugin.java`, `capacitor/scripts/prepare_android.py` — پل بومی اندروید برای پشتیبان‌گیری، بررسی نسخه، نصب به‌روزرسانی و ساخت آیکون‌های لانچر.
 - `capacitor/android_icon_background.png`, `capacitor/android_icon_foreground.png` — لایهٔ گرادیان تمام‌صفحه و نشان شفافِ آیکون اندروید.
-- `.github/workflows/build.yml` — ساخت بستهٔ ویندوز به‌شکل onedir و APK امضاشدهٔ Capacitor؛ Pillow برای تولید منابع آیکون APK در مرحلهٔ build نصب می‌شود.
+- `.github/workflows/build.yml`, `installer/PeriodicTableTrainer.iss` — ساخت بستهٔ نصب ویندوز از onedir و APK امضاشدهٔ Capacitor؛ نصب‌کننده در Program Files نصب می‌کند و میان‌بر دسکتاپ می‌سازد. Pillow برای تولید منابع آیکون APK در مرحلهٔ build نصب می‌شود.
 - `version.json` — manifest نسخه و نشانی‌های به‌روزرسانی.
 - `windows_logo.png` — لوگوی دایره‌ای گرادیانی با بیرون شفاف؛ `app.ico` نسخهٔ ۲۵۶×۲۵۶ آن برای EXE ویندوز است.
 - `app_logo.png` — پیش‌نمایش لوگوی موبایل با همان نشان و گرادیانِ کشیده‌شده تا لبه‌های تصویر.
@@ -20,15 +20,9 @@
 
 ## ساخت نسخهٔ ویندوز
 
-در ویندوز، از ریشهٔ پروژه اجرا کنید:
+Workflow ویندوز، برنامه را به‌شکل onedir می‌سازد و با Inno Setup یک نصب‌کننده تولید می‌کند. فایل `PeriodicTableTrainer-windows.zip` شامل `PeriodicTableTrainer-Setup-<version>.exe` و راهنمای نصب است. نصب‌کننده به‌طور پیش‌فرض برنامه را در `Program Files\PeriodicTableTrainer` نصب می‌کند، میان‌بر دسکتاپ می‌سازد و میان‌بر منوی Start را نیز اضافه می‌کند. برای نصب، کاربر باید پنجرهٔ مجوز Windows را تأیید کند.
 
-```powershell
-python -m pip install --upgrade pip "pywebview[winforms]" pyinstaller
-pyinstaller --noconfirm --clean --onedir --windowed --name "PeriodicTableTrainer" --icon=app.ico --add-data "windows_index.html;." --collect-all webview --hidden-import=clr windows_app.py
-Compress-Archive -Path "dist/PeriodicTableTrainer/*" -DestinationPath "dist/PeriodicTableTrainer-windows.zip" -Force
-```
-
-خروجی یک پوشهٔ کامل به‌همراه `PeriodicTableTrainer-windows.zip` است؛ هنگام نصب/جایگزینی، **همهٔ محتویات پوشه را با هم** نگه دارید و فقط EXE را جابه‌جا نکنید. این بسته‌بندی onedir برای جلوگیری از بارگذاری Python DLL از پوشهٔ موقت `_MEI…` به‌کار می‌رود. نسخه‌های قبلی onefile که خطای DLL می‌دهند با به‌روزرسانی HTML خودترمیم نمی‌شوند و باید یک‌بار با بستهٔ کامل جدید جایگزین شوند. به‌روزرسانی درون‌برنامه‌ای همچنان فقط `windows_index.html` را می‌گیرد و خود EXE را دانلود یا جایگزین نمی‌کند. پوشهٔ نصب باید اجازهٔ نوشتن داشته باشد.
+به‌روزرسانی درون‌برنامه‌ای همچنان **فقط HTML** را دانلود می‌کند؛ HTML جدید در پوشهٔ قابل‌نوشتن کاربر در `%LOCALAPPDATA%\PeriodicTableTrainer` جایگزین می‌شود و EXE دست‌نخورده می‌ماند. بنابراین نصب در Program Files به دسترسی نوشتن در آن پوشه نیاز ندارد و داده‌ها/WebView profile در AppData حفظ می‌شوند. نسخه‌های قدیمی onefile که خطای Python DLL می‌دهند با updater ترمیم نمی‌شوند؛ باید یک‌بار ZIP را دریافت و نصب‌کنندهٔ جدید را اجرا کرد. نصب جدید فایل‌های برنامه را در پوشهٔ نصب قرار می‌دهد و داده‌های ذخیره‌شدهٔ کاربر را پاک نمی‌کند.
 
 ## ساخت Android با Capacitor
 
@@ -58,4 +52,4 @@ cd android
 
 برای انتشار بعدی، نسخهٔ `package.json` و فیلدهای متناظر در `version.json` را هماهنگ کنید. `windows_app.py` از نشانی `windows_html_url` استفاده می‌کند؛ `capacitor/native/PeriodicTrainerNativePlugin.java` manifest را برای بررسی و دریافت APK می‌خواند. `update_config.py` تنظیمات به‌روزرسانی Windows را نگه می‌دارد.
 
-Workflow انتشار در `.github/workflows/build.yml` هر دو خروجی را می‌سازد. انتشار یا push از این workspace انجام نشده است.
+Workflow انتشار در `.github/workflows/build.yml` با اجرای push یا دستی، بستهٔ نصب ویندوز، HTML جایگزین ویندوز و APK اندروید را می‌سازد و به GitHub Release همان اجرا می‌فرستد.

@@ -63,15 +63,30 @@ def app_directory() -> Path:
     return Path(__file__).resolve().parent
 
 
+def _html_version(path: Path) -> tuple[int, ...] | None:
+    """Read the interface version embedded in an external HTML candidate."""
+    try:
+        text = path.read_text(encoding="utf-8")
+        match = re.search(r"const\s+CURRENT_APP_VERSION\s*=\s*['\"]([^'\"]+)['\"]", text)
+        return _version_tuple(match.group(1)) if match else None
+    except (OSError, UnicodeError, ValueError):
+        return None
+
+
 def windows_html_file() -> Path:
-    """Prefer a replaceable HTML file beside the EXE; otherwise use the bundle."""
-    external = app_directory() / "windows_index.html"
-    if external.is_file():
-        return external
-    internal = bundled_file("windows_index.html")
-    if internal.is_file():
-        return internal
-    raise FileNotFoundError("windows_index.html was not found beside the app or inside the EXE")
+    """Use the newest interface from writable AppData, the install folder, or bundle."""
+    candidates = (
+        app_data_dir() / "windows_index.html",
+        app_directory() / "windows_index.html",
+        bundled_file("windows_index.html"),
+    )
+    existing = [path for path in candidates if path.is_file()]
+    if not existing:
+        raise FileNotFoundError("windows_index.html was not found in AppData, beside the app, or inside the bundle")
+    versioned = [(version, -index, path) for index, path in enumerate(existing) if (version := _html_version(path)) is not None]
+    if versioned:
+        return max(versioned)[2]
+    return existing[0]
 
 
 def fetch_version_manifest() -> dict[str, Any]:
@@ -210,13 +225,15 @@ class BackupApi:
                 raise ValueError("نسخهٔ جدیدی برای ویندوز موجود نیست.")
             url = _https_url(manifest.get("windows_html_url"))
             app_dir = app_directory()
-            new_html = app_dir / "new_index.html"
+            data_dir = app_data_dir()
+            new_html = data_dir / "new_index.html"
             self._download_html(url, new_html, manifest.get("windows_html_sha256"))
 
-            # Keep the downloaded interface beside the EXE. The batch file waits
-            # for this process to exit, rotates the previous HTML, installs the
-            # new one, restarts the EXE, and then deletes itself.
-            bat = app_dir / "update.bat"
+            # Install folders such as Program Files are protected. Keep the
+            # replaceable HTML in per-user AppData, then restart the same EXE.
+            bat = data_dir / "update.bat"
+            exe_path = str(app_dir / EXE_NAME)
+            working_dir = str(app_dir)
             bat.write_text(
                 "@echo off\r\n"
                 "cd /d \"%~dp0\"\r\n"
@@ -228,18 +245,18 @@ class BackupApi:
                 "if exist \"windows_index.html\" ren \"windows_index.html\" \"windows_index_old.html\"\r\n"
                 "ren \"new_index.html\" \"windows_index.html\"\r\n"
                 "if errorlevel 1 goto restore_old\r\n"
-                f"start \"\" \"%~dp0{EXE_NAME}\"\r\n"
+                f"start \"\" /D \"{working_dir}\" \"{exe_path}\"\r\n"
                 "goto cleanup\r\n"
                 ":restore_old\r\n"
                 "if not exist \"windows_index.html\" if exist \"windows_index_old.html\" ren \"windows_index_old.html\" \"windows_index.html\"\r\n"
                 ":launch_old\r\n"
-                f"if exist \"{EXE_NAME}\" start \"\" \"%~dp0{EXE_NAME}\"\r\n"
+                f"if exist \"{exe_path}\" start \"\" /D \"{working_dir}\" \"{exe_path}\"\r\n"
                 ":cleanup\r\n"
                 "del \"%~f0\"\r\n",
                 encoding="ascii",
             )
             creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
-            subprocess.Popen(["cmd.exe", "/c", bat.name], cwd=str(app_dir), creationflags=creationflags, close_fds=True)
+            subprocess.Popen(["cmd.exe", "/c", bat.name], cwd=str(data_dir), creationflags=creationflags, close_fds=True)
             self.restart_requested = True
             self._progress(
                 100,
