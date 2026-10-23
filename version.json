@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.0.6",
-  "notes": "نسخهٔ ۱.۰.۶: فاصله‌گذاری گزینه‌های تنظیم بازی در همهٔ نسخه‌ها.",
+  "latest_version": "1.0.8",
+  "notes": "نسخهٔ ۱.۰.۸: افزودن توضیح و فکت برای هر ۱۱۸ عنصر، نمایش تمام‌عرض در شناسنامهٔ عنصر، و ۱۰ مدال دشوار جدید.",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer-windows.zip",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"
