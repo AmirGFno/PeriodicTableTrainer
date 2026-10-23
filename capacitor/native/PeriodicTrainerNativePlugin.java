@@ -119,6 +119,7 @@ public class PeriodicTrainerNativePlugin extends Plugin {
 
     @PluginMethod
     public void updateAndroid(PluginCall call) {
+        String requestedUrl = call.getString("androidUrl");
         if (!updateRunning.compareAndSet(false, true)) {
             JSObject response = new JSObject();
             response.put("ok", true);
@@ -131,7 +132,7 @@ public class PeriodicTrainerNativePlugin extends Plugin {
         call.resolve(response);
         executor.execute(() -> {
             try {
-                downloadAndInstall();
+                downloadAndInstall(requestedUrl);
             } catch (Exception error) {
                 emitError("دانلود/نصب به‌روزرسانی Android ناموفق بود: " + error.getMessage());
             } finally {
@@ -154,14 +155,21 @@ public class PeriodicTrainerNativePlugin extends Plugin {
         }
     }
 
-    private void downloadAndInstall() throws Exception {
+    private void downloadAndInstall(String requestedUrl) throws Exception {
         emitProgress(0, "در حال بررسی نسخهٔ جدید Android...");
         JSONObject manifest = fetchManifest();
         String latest = manifest.getString("latest_version");
         if (compareVersions(latest, appVersion()) <= 0) {
             throw new IllegalStateException("نسخهٔ جدیدی برای Android موجود نیست.");
         }
-        String apkUrl = requireHttps(manifest.optString("android_url", ""));
+        String manifestUrl = requireHttps(manifest.optString("android_url", ""));
+        String apkUrl = manifestUrl;
+        if (requestedUrl != null && !requestedUrl.trim().isEmpty()) {
+            apkUrl = requireHttps(requestedUrl.trim());
+            if (!apkUrl.equals(manifestUrl)) {
+                throw new IllegalStateException("نشانی APK با version.json فعلی مطابقت ندارد؛ نسخه را دوباره بررسی کنید.");
+            }
+        }
         File updateDir = new File(getContext().getFilesDir(), "updates");
         if (!updateDir.exists() && !updateDir.mkdirs()) throw new IllegalStateException("ساخت پوشهٔ دانلود ممکن نشد.");
         File apk = new File(updateDir, "PeriodicTableTrainer.apk");

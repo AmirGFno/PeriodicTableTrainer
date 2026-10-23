@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>آزمایشگاه جدول تناوبی</title>
 <style>
 /* BEGIN EMBEDDED OFFLINE FONTS */
@@ -119,7 +119,18 @@ button,input{font:inherit;font-family:var(--font-button)}select{font-family:var(
 .topbar{display:flex;align-items:center;gap:12px;padding:10px 2px 18px;border-bottom:1px solid var(--line);margin-bottom:18px}
 .brand{font-weight:900;font-size:clamp(19px,3vw,27px);flex:1}
 .toolbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-.theme-toggle-area{display:flex;align-items:center;height:35px;border-inline-start:1px solid var(--line);padding-inline-start:10px;margin-inline-start:3px}.theme-switch{position:relative;direction:ltr;flex:0 0 70px;width:70px;height:35px}.theme-switch .toggle--checkbox{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%)}.theme-switch .toggle--checkbox:focus-visible+.toggle--label{outline:3px solid var(--accent);outline-offset:3px}.theme-switch .toggle--label{width:200px;height:100px;background:var(--blue-color);border-radius:100px;border:5px solid var(--blue-border);display:flex;position:absolute;left:0;top:0;transform:scale(.35);transform-origin:top left;transition:background 250ms ease-in,border-color 250ms ease-in;cursor:pointer}.theme-switch .toggle--label-background{width:10px;height:5px;border-radius:5px;position:relative;background:var(--white);left:135px;top:45px;transition:all 150ms ease-in}.theme-switch .toggle--label-background:before,.theme-switch .toggle--label-background:after{content:"";position:absolute;width:40px;height:5px;border-radius:5px;background:var(--white);transition:all 150ms ease-in}.theme-switch .toggle--label-background:before{top:-5px;left:-20px}.theme-switch .toggle--label-background:after{top:5px;left:-10px}.theme-switch .toggle--label:before{content:"";transition:left 250ms ease-in,background 250ms ease-in,border-color 250ms ease-in;width:82px;height:82px;border:5px solid var(--yellow-border);top:50%;left:4px;transform:translateY(-50%);position:absolute;border-radius:82px;background:var(--yellow-background)}.theme-switch .toggle--label:after{content:"";transition:all 250ms ease-in;position:absolute;box-shadow:var(--gray-dots) -13px 0 0 2px,var(--gray-dots) -24px 14px 0 -2px;left:143px;top:23px;width:10px;height:10px;background:transparent;border-radius:50%;opacity:0}.theme-switch .toggle--checkbox:checked+.toggle--label{background:var(--indigo-color);border-color:var(--indigo-border)}.theme-switch .toggle--checkbox:checked+.toggle--label .toggle--label-background{left:60px;width:5px}.theme-switch .toggle--checkbox:checked+.toggle--label .toggle--label-background:before{width:5px;height:5px;top:-25px}.theme-switch .toggle--checkbox:checked+.toggle--label .toggle--label-background:after{width:5px;height:5px;left:-30px;top:20px}.theme-switch .toggle--checkbox:checked+.toggle--label:before{left:calc(100% - 86px);background:var(--white);border-color:var(--gray-border)}.theme-switch .toggle--checkbox:checked+.toggle--label:after{transition-delay:0ms;opacity:1}
+.theme-toggle-area{display:flex;align-items:center;justify-content:center;height:40px;margin:0;padding:0;border:0;flex:0 0 auto}
+.theme-toggle-button{position:relative;display:grid;place-items:center;width:40px;height:40px;padding:0;overflow:hidden;border:1px solid #e2aa44;border-radius:50%;background:linear-gradient(145deg,#fff3b5,#f6ad36);color:#684314;box-shadow:0 3px 10px #0002;cursor:pointer;transition:transform .2s,background .3s,color .3s,border-color .3s,box-shadow .2s}
+.theme-toggle-button:active{transform:scale(.9)}
+.theme-toggle-button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.theme-icon{position:absolute;width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;transition:opacity .28s ease,transform .38s cubic-bezier(.2,.8,.2,1)}
+.theme-moon{fill:currentColor;stroke-width:.7}
+body.light .theme-sun{opacity:1;transform:rotate(0) scale(1)}
+body.light .theme-moon{opacity:0;transform:rotate(-90deg) scale(.45)}
+body:not(.light) .theme-toggle-button{background:linear-gradient(145deg,#39416c,#1c2445);color:#ffe8a0;border-color:#737bad;box-shadow:0 3px 12px #0004}
+body:not(.light) .theme-sun{opacity:0;transform:rotate(90deg) scale(.45)}
+body:not(.light) .theme-moon{opacity:1;transform:rotate(0) scale(1)}
+@media(prefers-reduced-motion:reduce){.theme-toggle-button,.theme-icon{transition:none}}
 .icon-btn,.nav-btn,.btn{border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--text);padding:9px 13px;min-height:40px;font-weight:700;transition:transform .15s,filter .15s,background .2s}
 .icon-btn:hover,.nav-btn:hover,.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
 .nav-btn.active{background:var(--accent);color:#071426;border-color:transparent}
@@ -168,30 +179,118 @@ body.light .ptable-element{color:#172238;text-shadow:none;box-shadow:0 2px 7px #
 .modal-backdrop{position:fixed;inset:0;background:#050914bb;display:none;align-items:center;justify-content:center;padding:16px;z-index:80;backdrop-filter:blur(4px)}.modal-backdrop.open{display:flex;animation:fade .18s}.modal{width:min(560px,100%);max-height:90vh;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:17px;padding:20px;box-shadow:0 25px 70px #0008;animation:pop .2s}.modal-head{display:flex;align-items:center;gap:10px}.modal-head h2{flex:1;margin:0}.modal-close{border:0;background:var(--surface2);color:var(--text);border-radius:9px;width:38px;height:38px;font-size:20px}.modal-symbol{font-family:Arial,Helvetica,sans-serif;font-size:40px;font-weight:900;color:var(--accent)}.modal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}.modal-field{padding:9px;background:var(--surface2);border-radius:9px;line-height:1.7}.modal-field small{display:block;color:var(--muted)}.electron-config{display:block;direction:ltr;text-align:left;unicode-bidi:isolate;font-family:ui-monospace,Consolas,monospace;font-size:12px;overflow-wrap:anywhere}.wiki-link{display:block;text-decoration:none;text-align:center;margin-top:13px}.@keyframes fade{from{opacity:0}to{opacity:1}}@keyframes pop{from{transform:scale(.95);opacity:.6}to{transform:scale(1);opacity:1}}
 .home-credit{text-align:center;color:var(--muted);font-size:12px;margin-top:20px}
 .page-subtitle,.hero p,.modal-field{font-size:15px;font-weight:400}.mode-card .desc{font-size:12px;font-weight:400}.record-line{font-size:10px;font-weight:400}.badge small{font-size:12px;font-weight:400}.home-credit{font-size:11px;font-weight:400}
-@media(max-width:720px){.app{padding:12px}.topbar{align-items:flex-start;flex-direction:column}.brand{width:100%}.toolbar{width:100%}.toolbar .nav-btn{flex:1;padding:8px 6px;font-size:12px}.timer-toggle{font-size:11px}.stats-grid{grid-template-columns:repeat(2,1fr)}.ptable-viewport{height:58vh;min-height:390px}.element-progress{grid-template-columns:repeat(9,minmax(19px,1fr))}.mastery-row{grid-template-columns:88px 1fr 43px}.game-mode{min-width:100%;}.state-options{grid-template-columns:repeat(2,1fr)}.modal-grid{grid-template-columns:1fr 1fr}.electron-key-row{display:flex;flex-wrap:nowrap;overflow-x:auto;padding-bottom:5px}.electron-key{flex:0 0 auto}}
+
 
 /* Mobile build: larger touch targets and comfortable vertical scrolling. */
-@media (max-width:720px){
-  .app{padding:10px 10px 24px}
-  .toolbar{gap:6px}
-  .toolbar .nav-btn,.btn,.state-option,.electron-key,.legend-filter,.modal-close{min-height:46px}
-  .toolbar .nav-btn{font-size:13px;padding:9px 8px}
-  .game-controls .btn{min-width:145px;flex:1}
-  .ptable-viewport{height:60vh;min-height:360px}
-  .table-tools input{min-height:44px}
-  .electron-key-row{display:flex;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-inline:contain;padding:0 0 7px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
-  .electron-key{flex:0 0 auto;min-height:46px;min-width:46px}
-  .electron-key.noble-key{min-width:76px}
-  .legend-filter{font-size:12px;padding:8px 12px}
-  .modal{padding:16px;max-height:88vh}
-  .modal-grid{gap:7px}
-  .screen{scroll-margin-top:8px}
-}
-@media (pointer:coarse){
-  button,.legend-filter,.ptable-element{touch-action:manipulation}
-  .ptable-viewport{touch-action:none}
-}
 
+
+
+
+/* Capacitor/mobile layout overrides */
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+.app{min-width:0}
+.brand-line{display:flex;align-items:center;gap:9px;flex:1;min-width:0}
+.header-back{display:none;flex:0 0 38px;width:38px;height:38px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);font:700 25px/1 Arial,sans-serif;place-items:center;padding:0}
+.header-back[hidden]{display:none!important}
+.toolbar-row{display:flex;align-items:center;gap:6px;min-width:0}
+.toolbar-scroll{display:flex;align-items:center;gap:6px;min-width:0}
+.toolbar{flex:0 1 auto;min-width:0}
+.table-tools input{box-sizing:border-box;width:100%;min-width:0;max-width:100%}
+
+@media(max-width:720px){
+  .app{width:100%;padding:8px 10px 20px;overflow-x:hidden}
+  .topbar{position:sticky;top:0;z-index:50;display:flex;flex-direction:column;align-items:stretch;gap:6px;margin:0 -10px 12px;padding:7px 10px 8px;background:var(--bg);border-bottom:1px solid var(--line)}
+  .brand-line{width:100%;min-height:34px;gap:8px}
+  .brand{width:auto;min-width:0;flex:1;font-size:15px;line-height:1.4}
+  .header-back{display:grid;min-height:36px;min-width:38px}
+  .toolbar-row{display:flex;flex-direction:row;direction:rtl;align-items:center;gap:4px;width:100%;min-width:0;min-height:42px}
+  .toolbar-scroll{flex:1 1 auto;width:auto;max-width:none;min-width:0;min-height:42px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x;padding:1px 0 4px}
+  .toolbar-scroll::-webkit-scrollbar{display:none}
+  .toolbar{display:flex;width:max-content;min-width:max-content;flex:0 0 auto;flex-wrap:nowrap;gap:5px}
+  .toolbar .nav-btn{flex:0 0 auto;min-height:36px;padding:7px 10px;font-size:12px;line-height:1.2;white-space:nowrap;border-radius:9px}
+  .toolbar .update-check{min-width:36px;padding:6px;font-size:15px}
+  .theme-toggle-area{flex:0 0 40px;width:40px;height:40px;margin:0;padding:0;border:0;justify-content:center}
+  .theme-toggle-button{width:38px;height:38px}
+
+  .hero{margin:10px auto 13px}
+  .hero h1{font-size:22px;line-height:1.45;margin-bottom:5px}
+  .hero p,.page-subtitle{font-size:12px;line-height:1.7;margin-bottom:12px}
+  .mode-grid{grid-template-columns:minmax(0,1fr);gap:8px;width:100%}
+  .mode-card{width:100%;min-width:0;min-height:0;gap:7px;padding:10px 12px;border-radius:12px}
+  .mode-card strong{font-size:14px;line-height:1.45}
+  .mode-card .desc{font-size:11px;line-height:1.55}
+  .record-line{font-size:9px;line-height:1.5;padding-top:6px;margin-top:2px}
+  .home-credit{font-size:10px;margin-top:12px}
+
+  .panel{padding:11px;border-radius:13px}
+  .page-title{font-size:19px;margin:8px 0 4px}
+  .setup-card{width:100%;margin:14px auto;padding:12px}
+  .check-row{gap:7px;padding:9px;font-size:12px;line-height:1.6}
+  .actions{gap:7px;margin-top:11px}
+  .actions .btn{min-width:0;padding:8px 9px;font-size:12px}
+  .game-head{gap:5px;margin-bottom:6px}
+  .game-mode{flex:1 0 100%;min-width:0;font-size:12px;line-height:1.5}
+  .game-stat{padding:5px 7px;font-size:11px;border-radius:8px}
+  #endGame{min-height:34px;padding:5px 8px;font-size:11px}
+  .progress-line{gap:6px;font-size:11px;margin:6px 0}
+  .prompt{min-height:0;margin:5px 0 7px;font-size:14px;line-height:1.6}
+  .question-stage{width:100%;min-height:210px;padding:4px}
+  .element-cell{width:min(100%,320px);min-height:190px;padding:8px 10px;gap:3px}
+  .cell-number{font-size:12px;min-height:18px}
+  .cell-symbol{font-size:34px;min-height:44px}
+  .cell-name{font-size:14px;min-height:22px}
+  .cell-meta{font-size:10px;line-height:1.55;min-height:16px}
+  .tile-input.sym{height:46px;font-size:22px}
+  .tile-input.num{height:30px;font-size:14px}
+  .game-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:6px}
+  .game-controls .btn{width:100%;min-width:0;min-height:40px;padding:7px 5px;font-size:12px;line-height:1.35;white-space:normal}
+  .hint-box{font-size:11px;line-height:1.6;margin-top:5px}
+  .feedback{font-size:11px;line-height:1.6;min-height:30px}
+  .state-options{gap:7px;margin-top:7px}
+  .state-option{min-height:40px;padding:7px;font-size:12px}
+  .electron-keyboard{gap:7px;margin-top:7px;padding:8px}
+  .electron-key-section strong{font-size:10px}
+  .electron-key{min-height:38px;min-width:38px;font-size:13px}
+  .electron-key.noble-key{min-width:70px;font-size:11px}
+
+  .table-tools{display:grid;grid-template-columns:40px minmax(38px,1fr) 40px auto;gap:6px;align-items:center;width:100%;margin:8px 0}
+  .table-tools>.btn{min-width:0;min-height:36px;padding:5px 8px;font-size:12px}
+  .zoom-label{min-width:0;font-size:11px}
+  .table-tools input{grid-column:1/-1;grid-row:2;width:100%;min-width:0;min-height:40px;padding:8px 9px;font-size:12px}
+  .ptable-viewport{width:100%;height:min(62vh,560px);min-height:320px;overflow:hidden;border-radius:11px;touch-action:none;overscroll-behavior:contain}
+  .ptable-grid{width:100%;grid-template-columns:repeat(18,minmax(0,1fr));grid-auto-rows:40px;gap:1px;padding:4px;touch-action:none}
+  .group-label{font-size:7px}
+  .ptable-element{border-radius:3px;padding:1px}
+  .ptable-element .z{font-size:6px;padding-left:1px}
+  .ptable-element .sym{font-size:11px;line-height:1}
+  .ptable-element .fa{font-size:5.5px;letter-spacing:-.2px}
+  .legend{gap:5px;margin-top:8px}
+  .legend-filter{min-height:32px;padding:5px 8px;font-size:10px}
+  .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .stat-card{padding:9px 5px;font-size:11px}
+  .stat-card strong{font-size:19px}
+  .mastery-row{grid-template-columns:75px minmax(0,1fr) 38px;gap:6px;font-size:10px}
+  .element-progress{grid-template-columns:repeat(9,minmax(0,1fr));gap:4px}
+  .badge-grid{grid-template-columns:minmax(0,1fr);gap:7px}
+  .badge{gap:8px;padding:9px}
+  .badge-icon{font-size:22px}
+  .badge b{font-size:12px;margin-bottom:3px}
+  .badge small{font-size:10px;line-height:1.55}
+  .modal-backdrop,.update-backdrop{padding:10px}
+  .modal,.update-dialog{width:100%;max-height:88dvh;padding:13px;border-radius:14px}
+  .modal-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .modal-field{padding:7px;font-size:11px;line-height:1.55;overflow-wrap:anywhere}
+  .modal-field small{font-size:9px}
+}
+@media(max-width:380px){
+  .app{padding-inline:8px}
+  .topbar{margin-inline:-8px;padding-inline:8px}
+  .mode-card{padding:9px 10px}
+  .game-controls{gap:5px}
+  .game-controls .btn{font-size:11px}
+  .table-tools{grid-template-columns:36px minmax(34px,1fr) 36px auto;gap:4px}
+  .table-tools>.btn{padding-inline:6px;font-size:11px}
+}
 
 /* In-app updater */
 .update-check{min-width:42px;padding:8px 10px;font-size:17px;line-height:1}
@@ -211,15 +310,22 @@ body.light .ptable-element{color:#172238;text-shadow:none;box-shadow:0 2px 7px #
 <body>
 <div class="app">
   <header class="topbar">
-    <div class="brand">آزمایشگاه جدول تناوبی</div>
-    <nav class="toolbar" aria-label="ناوبری">
-      <button class="nav-btn" data-page="menu">منو</button>
-      <button class="nav-btn" data-page="table">جدول تناوبی</button>
-      <button class="nav-btn" data-page="stats">آمار من</button>
-      <button class="nav-btn" data-page="badges">کلکسیون مدال‌ها</button>
-      <button type="button" id="updateCheckButton" class="nav-btn update-check" title="بررسی به‌روزرسانی" aria-label="بررسی به‌روزرسانی">🔄</button>
-    </nav>
-    <div class="theme-toggle-area"><div class="theme-switch" title="تغییر حالت روز و شب"><input type="checkbox" id="themeToggle" class="toggle--checkbox" aria-label="تغییر حالت روز و شب"><label for="themeToggle" class="toggle--label" aria-hidden="true"><span class="toggle--label-background"></span></label></div></div>
+    <div class="brand-line">
+      <button type="button" id="headerBack" class="header-back" hidden aria-label="بازگشت به منو" title="بازگشت">›</button>
+      <div class="brand">آزمایشگاه جدول تناوبی</div>
+    </div>
+    <div class="toolbar-row">
+      <div class="toolbar-scroll" aria-label="منوی پیمایشی">
+        <nav class="toolbar" aria-label="ناوبری">
+          <button class="nav-btn" data-page="menu">منو</button>
+          <button class="nav-btn" data-page="table">جدول تناوبی</button>
+          <button class="nav-btn" data-page="stats">آمار من</button>
+          <button class="nav-btn" data-page="badges">کلکسیون مدال‌ها</button>
+          <button type="button" id="updateCheckButton" class="nav-btn update-check" title="بررسی به‌روزرسانی" aria-label="بررسی به‌روزرسانی">🔄</button>
+        </nav>
+      </div>
+      <div class="theme-toggle-area"><button type="button" id="themeToggleButton" class="theme-toggle-button" aria-label="تغییر حالت روز و شب" aria-pressed="false" title="تغییر حالت روز و شب"><svg class="theme-icon theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"></path></svg><svg class="theme-icon theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.1 15.2A8.5 8.5 0 0 1 8.8 3.9 8.7 8.7 0 1 0 20.1 15.2Z"></path><path d="m16.7 3 .45 1.35L18.5 5l-1.35.45L16.7 6.8l-.45-1.35L14.9 5l1.35-.65L16.7 3Z"></path></svg></button></div>
+    </div>
   </header>
 
   <section id="menu" class="screen active">
@@ -263,7 +369,7 @@ body.light .ptable-element{color:#172238;text-shadow:none;box-shadow:0 2px 7px #
 
   <section id="table" class="screen">
     <h2 class="page-title">جدول تناوبی عناصر</h2>
-    <p class="page-subtitle">برای دیدن مشخصات هر عنصر روی آن کلیک کنید؛ با چرخ ماوس زوم کنید و برای جابه‌جایی بکشید.</p>
+    <p class="page-subtitle">برای دیدن مشخصات عنصر روی آن بزنید؛ با دو انگشت زوم کنید و با یک انگشت جدول را جابه‌جا کنید.</p>
     <div class="table-tools">
       <button id="zoomOut" class="btn subtle">-</button><span id="zoomLabel" class="zoom-label">۱۰۰٪</span><button id="zoomIn" class="btn subtle">+</button><button id="zoomReset" class="btn subtle">بازنشانی</button>
       <input id="tableSearch" type="search" placeholder="جست‌وجو بر اساس نام، نماد یا عدد اتمی">
@@ -377,8 +483,8 @@ function bootstrapMobileApp(){const native=window.Capacitor?.Plugins?.PeriodicTr
 let currentMode=null,askState=false,electronConfigStyle="condensed",deck=[],totalQuestions=0,currentElement=null,stage="main";
 let mainCorrect=false,mainAnswer="",mainPrompt="",selectedCategory=null,selectedState=null,hintUsed=false,currentHint="";
 let score=0,correctCount=0,wrongCount=0,answered=0,streak=0,questionStartedAt=0,mistakes=[];
-let timerInterval=null,timerRemaining=15,toastTimer=null,advanceTimer=null,themeSwitchTimer=null,gameCompleted=false,roundLocked=false;
-let panX=10,panY=10,zoomScale=1,dragStart=null,hasDragged=false,activeTableCategory=null;
+let timerInterval=null,timerRemaining=15,toastTimer=null,advanceTimer=null,gameCompleted=false,roundLocked=false;
+let panX=10,panY=10,zoomScale=1,dragStart=null,hasDragged=false,activeTableCategory=null,tableFitInitialized=false,tableUserZoomed=false,touchGesture=null;
 const $=id=>document.getElementById(id);
 const digits=n=>String(n).replace(/[0-9]/g,d=>"۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 function toSuperscript(str){const superscripts="⁰¹²³⁴⁵⁶⁷⁸⁹";return String(str||"").replace(/([spdfg])(\d+)/gi,(_,orbital,electrons)=>orbital+[...electrons].map(d=>superscripts[Number(d)]).join(""))}
@@ -396,8 +502,8 @@ function persist(){try{const packed=JSON.stringify(data);localStorage.setItem(ST
 function statCategory(e){if(e.category==="noble_gas")return"noble_gas";if(e.category==="metalloid")return"metalloid";if(isMetal(e))return"metal";return"nonmetal"}
 function quizCategory(e){return e.category==="metalloid"?"metalloid":isMetal(e)?"metal":"nonmetal"}
 function isMetal(e){return ["alkali_metal","alkaline_earth_metal","transition_metal","post_transition_metal","lanthanide","actinide","metal"].includes(e.category)}
-function showScreen(id){document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");document.querySelector(".topbar").style.display=id==="game"?"none":"flex";document.querySelectorAll("[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===id));if(id==="stats")renderStats();if(id==="badges")renderBadges();if(id==="table")applyTransform()}
-function setTheme(theme){data.theme=theme;document.body.classList.toggle("light",theme==="light");const toggle=$("themeToggle");if(toggle){toggle.checked=theme==="dark";toggle.setAttribute("aria-label",theme==="dark"?"فعال کردن حالت روز":"فعال کردن حالت شب")}persist()}
+function showScreen(id){document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");document.querySelector(".topbar").style.display=id==="game"?"none":"flex";const back=$("headerBack");if(back)back.hidden=id==="menu"||id==="game";document.querySelectorAll("[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===id));if(id==="stats")renderStats();if(id==="badges")renderBadges();if(id==="table")requestAnimationFrame(()=>{if(!tableUserZoomed||!tableFitInitialized)fitTableToWidth();else applyTransform()})}
+function setTheme(theme){data.theme=theme;document.body.classList.toggle("light",theme==="light");const toggle=$("themeToggleButton");if(toggle){toggle.setAttribute("aria-label",theme==="dark"?"فعال کردن حالت روز":"فعال کردن حالت شب");toggle.setAttribute("aria-pressed",String(theme==="dark"))}persist()}
 function init(){setTheme(data.theme||"light");$("timerToggle").checked=!!data.timerEnabled;buildElectronKeyboard();buildModeCards();buildPeriodicTable();renderStats();renderBadges();bindUI();}
 function buildModeCards(){const root=$("modeGrid");root.innerHTML="";for(const [key,mode] of Object.entries(MODES)){const rec=data.records[key]||{};const card=document.createElement("button");card.type="button";card.className=`mode-card mode-${key}`;card.innerHTML=`<strong>${mode.title}</strong><span class="desc">${mode.desc}</span><span class="record-line">بهترین امتیاز: ${digits(rec.score??0)} | بهترین درصد: ${digits((rec.percent??0).toFixed(1))}٪</span>`;card.addEventListener("click",()=>selectMode(key));root.appendChild(card)}}
 function selectMode(key){currentMode=key;$("setupTitle").textContent=MODES[key].title;$("setupDesc").textContent=MODES[key].desc;$("timerToggle").checked=!!data.timerEnabled;const supportsState=key==="ordered_1_36"||key==="category";$("askStateRow").hidden=!supportsState;$("askState").checked=false;$("configStyleRow").hidden=key!=="electron_config";$("configStyle").value=data.electronConfigStyle||"condensed";showScreen("setup")}
@@ -490,27 +596,32 @@ function buildPeriodicTable(){const grid=$("ptableGrid");grid.innerHTML="";for(l
 function categoryMatchesFilter(e,filter){if(filter==="halogen")return Number(e.group)===17;if(filter==="alkali_metal")return Number(e.group)===1&&Number(e.atomic_number)!==1;if(filter==="alkaline_earth_metal")return Number(e.group)===2;if(filter==="lanthanide")return Number(e.atomic_number)>=57&&Number(e.atomic_number)<=71;if(filter==="actinide")return Number(e.atomic_number)>=89&&Number(e.atomic_number)<=103;if(filter==="metal")return ["alkali_metal","alkaline_earth_metal","transition_metal","post_transition_metal","lanthanide","actinide"].includes(e.category);if(filter==="nonmetal")return ["nonmetal","halogen","noble_gas"].includes(e.category);return e.category===filter}
 function applyTableFilters(){const query=$("tableSearch").value.toLowerCase().trim();document.querySelectorAll(".ptable-element").forEach(el=>{const categoryOK=!activeTableCategory||categoryMatchesFilter({category:el.dataset.category,group:el.dataset.group,atomic_number:el.dataset.z},activeTableCategory);const searchOK=!query||el.dataset.search.includes(query);const visible=categoryOK&&searchOK;el.style.opacity=visible?"1":".18";el.style.filter=visible?"":"brightness(.28) saturate(.35)"});document.querySelectorAll(".f-placeholder").forEach(el=>{const visible=!activeTableCategory||categoryMatchesFilter({category:el.dataset.category,group:el.dataset.group,atomic_number:el.dataset.z},activeTableCategory);el.style.opacity=visible?"1":".18";el.style.filter=visible?"":"brightness(.28) saturate(.35)"});document.querySelectorAll(".legend-filter").forEach(button=>{const selected=button.dataset.filter===activeTableCategory;button.classList.toggle("selected",selected);button.setAttribute("aria-pressed",String(selected))})}
 function clampTablePan(){const viewport=$("tableViewport"),grid=$("ptableGrid");if(!viewport||!grid||!viewport.clientWidth||!viewport.clientHeight||!grid.offsetWidth||!grid.offsetHeight)return;const scaledWidth=grid.offsetWidth*zoomScale,scaledHeight=grid.offsetHeight*zoomScale;if(scaledWidth>viewport.clientWidth)panX=Math.max(viewport.clientWidth-scaledWidth,Math.min(0,panX));else panX=(viewport.clientWidth-scaledWidth)/2;if(scaledHeight>viewport.clientHeight)panY=Math.max(viewport.clientHeight-scaledHeight,Math.min(0,panY));else panY=(viewport.clientHeight-scaledHeight)/2}
-function applyTransform(){clampTablePan();$("ptableGrid").style.transform=`translate(${panX}px,${panY}px) scale(${zoomScale})`;$("zoomLabel").textContent=digits(Math.round(zoomScale*100))+"٪"}
-function changeZoom(amount){zoomScale=Math.min(2.8,Math.max(.8,zoomScale+amount));applyTransform()}
-function resetZoom(){zoomScale=1;panX=-50;panY=10;applyTransform()}
-function bindTablePan(){const vp=$("tableViewport");vp.addEventListener("pointerdown",e=>{dragStart={x:e.clientX,y:e.clientY,px:panX,py:panY};hasDragged=false});window.addEventListener("pointermove",e=>{if(!dragStart)return;const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;if(Math.abs(dx)+Math.abs(dy)>5){hasDragged=true;vp.classList.add("dragging")}if(hasDragged){panX=dragStart.px+dx;panY=dragStart.py+dy;applyTransform()}});const end=()=>{if(!dragStart)return;dragStart=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,50)};window.addEventListener("pointerup",end);window.addEventListener("pointercancel",end);vp.addEventListener("wheel",e=>{e.preventDefault();changeZoom(e.deltaY<0?.1:-.1)},{passive:false})}
+function applyTransform(){const grid=$("ptableGrid");if(!grid)return;clampTablePan();grid.style.transform=`translate(${panX}px,${panY}px) scale(${zoomScale})`;const label=$("zoomLabel");if(label)label.textContent=digits(Math.round(zoomScale*100))+"٪"}
+function fitTableToWidth(){const viewport=$("tableViewport"),grid=$("ptableGrid");if(!viewport||!grid||!viewport.clientWidth||!grid.offsetWidth)return;const usableWidth=Math.max(1,viewport.clientWidth-12);zoomScale=Math.max(.18,Math.min(1,usableWidth/grid.offsetWidth));panX=(viewport.clientWidth-grid.offsetWidth*zoomScale)/2;panY=8;tableFitInitialized=true;applyTransform()}
+function changeZoom(amount){zoomScale=Math.min(2.8,Math.max(.18,zoomScale+amount));tableUserZoomed=true;tableFitInitialized=true;applyTransform()}
+function resetZoom(){tableUserZoomed=false;fitTableToWidth()}
+function tablePoint(touch,rect){return{x:touch.clientX-rect.left,y:touch.clientY-rect.top}}
+function touchDistance(a,b){return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)}
+function beginTouchPan(touch,rect,preserveDrag=false){const point=tablePoint(touch,rect);touchGesture={type:"pan",x:point.x,y:point.y,px:panX,py:panY};if(!preserveDrag)hasDragged=false}
+function beginTouchPinch(touches,rect){const mid={x:(touches[0].clientX+touches[1].clientX)/2-rect.left,y:(touches[0].clientY+touches[1].clientY)/2-rect.top};touchGesture={type:"pinch",distance:Math.max(1,touchDistance(touches[0],touches[1])),zoom:zoomScale,contentX:(mid.x-panX)/zoomScale,contentY:(mid.y-panY)/zoomScale};hasDragged=true}
+function bindTablePan(){const vp=$("tableViewport");vp.addEventListener("pointerdown",e=>{if(e.pointerType==="touch")return;dragStart={x:e.clientX,y:e.clientY,px:panX,py:panY,pointerId:e.pointerId};hasDragged=false});window.addEventListener("pointermove",e=>{if(e.pointerType==="touch"||!dragStart)return;const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;if(Math.abs(dx)+Math.abs(dy)>5){hasDragged=true;vp.classList.add("dragging")}if(hasDragged){panX=dragStart.px+dx;panY=dragStart.py+dy;applyTransform()}});const endPointer=()=>{if(!dragStart)return;dragStart=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,70)};window.addEventListener("pointerup",endPointer);window.addEventListener("pointercancel",endPointer);vp.addEventListener("wheel",e=>{e.preventDefault();changeZoom(e.deltaY<0?.1:-.1)},{passive:false});vp.addEventListener("touchstart",e=>{if(!e.touches.length)return;const rect=vp.getBoundingClientRect();if(e.touches.length>=2)beginTouchPinch(e.touches,rect);else beginTouchPan(e.touches[0],rect)},{passive:false});vp.addEventListener("touchmove",e=>{if(!touchGesture)return;e.preventDefault();const rect=vp.getBoundingClientRect();if(e.touches.length>=2){if(touchGesture.type!=="pinch")beginTouchPinch(e.touches,rect);const mid={x:(e.touches[0].clientX+e.touches[1].clientX)/2-rect.left,y:(e.touches[0].clientY+e.touches[1].clientY)/2-rect.top};const distance=Math.max(1,touchDistance(e.touches[0],e.touches[1]));zoomScale=Math.min(2.8,Math.max(.18,touchGesture.zoom*distance/touchGesture.distance));panX=mid.x-touchGesture.contentX*zoomScale;panY=mid.y-touchGesture.contentY*zoomScale;tableUserZoomed=true;tableFitInitialized=true;hasDragged=true;applyTransform()}else if(e.touches.length===1){if(touchGesture.type!=="pan")beginTouchPan(e.touches[0],rect,touchGesture.type==="pinch");const point=tablePoint(e.touches[0],rect),dx=point.x-touchGesture.x,dy=point.y-touchGesture.y;if(Math.abs(dx)+Math.abs(dy)>5)hasDragged=true;if(hasDragged){panX=touchGesture.px+dx;panY=touchGesture.py+dy;applyTransform()}}},{passive:false});vp.addEventListener("touchend",e=>{const rect=vp.getBoundingClientRect();if(e.touches.length===1){beginTouchPan(e.touches[0],rect,touchGesture?.type==="pinch");return}if(e.touches.length>=2){beginTouchPinch(e.touches,rect);return}touchGesture=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,70)});vp.addEventListener("touchcancel",()=>{touchGesture=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,70)});window.addEventListener("resize",()=>{if($("table")?.classList.contains("active")){if(!tableUserZoomed)fitTableToWidth();else applyTransform()}})}
 
 const CURRENT_APP_VERSION="1.0.0";
-let updateDownloadRunning=false;
+let updateDownloadRunning=false,pendingAndroidUrl="";
 function openUpdateDialog(){const box=$("updateBackdrop");box.classList.add("open");box.setAttribute("aria-hidden","false");$("updateStatus").textContent="در حال بررسی نسخهٔ جدید...";$("updateDownload").hidden=true;$("updateNotes").textContent="";checkForAppUpdate()}
 function closeUpdateDialog(){if(updateDownloadRunning)return;$("updateBackdrop").classList.remove("open");$("updateBackdrop").setAttribute("aria-hidden","true")}
 function showUpdateProgress(percent,message){updateDownloadRunning=true;$("updateProgress").hidden=false;$("updateProgressFill").style.width=`${Math.max(0,Math.min(100,Number(percent)||0))}%`;$("updateStatus").textContent=message||"در حال دانلود بروزرسانی... لطفاً برنامه را نبندید";$("updateDownload").disabled=true;$("updateCheckAgain").disabled=true;$("updateClose").disabled=true}
 function finishUpdateProgress(message){updateDownloadRunning=false;$("updateProgressFill").style.width="100%";$("updateStatus").textContent=message||"دانلود کامل شد.";$("updateDownload").disabled=false;$("updateCheckAgain").disabled=false;$("updateClose").disabled=false}
 function showUpdateError(message){updateDownloadRunning=false;$("updateStatus").textContent=message||"به‌روزرسانی انجام نشد. دوباره تلاش کنید.";$("updateDownload").disabled=false;$("updateCheckAgain").disabled=false;$("updateClose").disabled=false}
-function renderUpdateCheck(info){if(!info||info.error){showUpdateError(info?.error||"دریافت اطلاعات نسخه ممکن نشد.");return}$("updateCurrentVersion").textContent=info.current_version||CURRENT_APP_VERSION;$("updateLatestVersion").textContent=info.latest_version||"—";$("updateNotes").textContent=info.notes||"توضیحی برای این نسخه ثبت نشده است.";if(info.available){$("updateStatus").textContent="نسخهٔ جدید آمادهٔ دریافت است.";$("updateDownload").hidden=false}else{$("updateStatus").textContent="برنامه به‌روز است.";$("updateDownload").hidden=true}}
+function renderUpdateCheck(info){if(!info||info.error){pendingAndroidUrl="";showUpdateError(info?.error||"دریافت اطلاعات نسخه ممکن نشد.");return}$("updateCurrentVersion").textContent=info.current_version||CURRENT_APP_VERSION;$("updateLatestVersion").textContent=info.latest_version||"—";$("updateNotes").textContent=info.notes||"توضیحی برای این نسخه ثبت نشده است.";pendingAndroidUrl=info.available?String(info.android_url||""):"";if(info.available){$("updateStatus").textContent="نسخهٔ جدید آمادهٔ دریافت است.";$("updateDownload").hidden=false}else{$("updateStatus").textContent="برنامه به‌روز است.";$("updateDownload").hidden=true}}
 async function checkForAppUpdate(){try{let info;const native=window.Capacitor?.Plugins?.PeriodicTrainerNative;if(window.pywebview?.api?.check_update){info=await window.pywebview.api.check_update()}else if(native?.checkUpdate){info=await native.checkUpdate()}else{const response=await fetch("/api/version",{cache:"no-store"});info=await response.json()}renderUpdateCheck(info)}catch(error){showUpdateError("بررسی نسخه انجام نشد؛ اتصال اینترنت و نشانی version.json را بررسی کنید.")}}
-async function requestAppUpdate(){if(updateDownloadRunning)return;showUpdateProgress(0,"در حال دانلود بروزرسانی... لطفاً برنامه را نبندید");try{let result;const native=window.Capacitor?.Plugins?.PeriodicTrainerNative;if(window.pywebview?.api?.update_android){result=await window.pywebview.api.update_android()}else if(native?.updateAndroid){result=await native.updateAndroid()}else{const response=await fetch("/api/update",{method:"POST"});result=await response.json()}if(!result?.ok)showUpdateError(result?.error||"شروع دانلود به‌روزرسانی ممکن نشد.")}catch(error){showUpdateError("شروع دانلود ناموفق بود؛ دوباره تلاش کنید.")}}
+async function requestAppUpdate(){if(updateDownloadRunning)return;const native=window.Capacitor?.Plugins?.PeriodicTrainerNative;if(native?.updateAndroid&&!pendingAndroidUrl){showUpdateError("نشانی دانلود APK در version.json موجود نیست؛ نسخه را دوباره بررسی کنید.");return}showUpdateProgress(0,"در حال دانلود بروزرسانی... لطفاً برنامه را نبندید");try{let result;if(window.pywebview?.api?.update_android){result=await window.pywebview.api.update_android()}else if(native?.updateAndroid){result=await native.updateAndroid({androidUrl:pendingAndroidUrl})}else{const response=await fetch("/api/update",{method:"POST"});result=await response.json()}if(!result?.ok)showUpdateError(result?.error||"شروع دانلود به‌روزرسانی ممکن نشد.")}catch(error){showUpdateError(error?.message||"شروع دانلود ناموفق بود؛ دوباره تلاش کنید.")}}
 window.setUpdateProgress=showUpdateProgress;
 window.finishUpdateProgress=finishUpdateProgress;
 window.showUpdateError=showUpdateError;
 
 function bindCapacitorUpdateEvents(){const native=window.Capacitor?.Plugins?.PeriodicTrainerNative;if(!native||window.__periodicTrainerNativeListenersBound)return;window.__periodicTrainerNativeListenersBound=true;native.addListener("updateProgress",event=>showUpdateProgress(event?.percent,event?.message));native.addListener("updateFinished",event=>finishUpdateProgress(event?.message));native.addListener("updateError",event=>showUpdateError(event?.message))}
-function bindUI(){bindCapacitorUpdateEvents();$("updateCheckButton").addEventListener("click",openUpdateDialog);$("updateDownload").addEventListener("click",requestAppUpdate);$("updateCheckAgain").addEventListener("click",checkForAppUpdate);$("updateClose").addEventListener("click",closeUpdateDialog);$("updateBackdrop").addEventListener("click",e=>{if(e.target===$("updateBackdrop"))closeUpdateDialog()});document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>showScreen(b.dataset.page)));$("themeToggle").addEventListener("change",e=>{if(themeSwitchTimer)clearTimeout(themeSwitchTimer);const nextTheme=e.target.checked?"dark":"light";themeSwitchTimer=setTimeout(()=>{themeSwitchTimer=null;setTheme(nextTheme)},250)});$("timerToggle").addEventListener("change",e=>{data.timerEnabled=e.target.checked;persist()});$("startMode").addEventListener("click",()=>{data.timerEnabled=$("timerToggle").checked;if(currentMode==="electron_config"){electronConfigStyle=$("configStyle").value;data.electronConfigStyle=electronConfigStyle}persist();startGame(currentMode,$("askState").checked)});$("setupBack").addEventListener("click",()=>showScreen("menu"));$("submitAnswer").addEventListener("click",submit);$("endGame").type="button";$("endGame").onclick=finishGameNow;$("hintBtn").addEventListener("click",useHint);$("replay").addEventListener("click",()=>startGame(currentMode,askState));$("toMenu").addEventListener("click",()=>showScreen("menu"));$("zoomIn").addEventListener("click",()=>changeZoom(.15));$("zoomOut").addEventListener("click",()=>changeZoom(-.15));$("zoomReset").addEventListener("click",resetZoom);$("tableSearch").addEventListener("input",applyTableFilters);document.querySelectorAll(".legend-filter").forEach(button=>button.addEventListener("click",()=>{activeTableCategory=activeTableCategory===button.dataset.filter?null:button.dataset.filter;applyTableFilters()}));$("modalClose").addEventListener("click",closeModal);$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal()});document.addEventListener("keydown",e=>{if(e.key==="Enter"&&$("game").classList.contains("active")){if(e.target.closest&&e.target.closest("button"))return;e.preventDefault();submit()}if(e.key==="Escape")closeModal()});bindTablePan()}
+function bindUI(){bindCapacitorUpdateEvents();$("updateCheckButton").addEventListener("click",openUpdateDialog);$("updateDownload").addEventListener("click",requestAppUpdate);$("updateCheckAgain").addEventListener("click",checkForAppUpdate);$("updateClose").addEventListener("click",closeUpdateDialog);$("updateBackdrop").addEventListener("click",e=>{if(e.target===$("updateBackdrop"))closeUpdateDialog()});document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>showScreen(b.dataset.page)));$("headerBack").addEventListener("click",()=>showScreen("menu"));$("themeToggleButton").addEventListener("click",()=>setTheme(data.theme==="dark"?"light":"dark"));$("timerToggle").addEventListener("change",e=>{data.timerEnabled=e.target.checked;persist()});$("startMode").addEventListener("click",()=>{data.timerEnabled=$("timerToggle").checked;if(currentMode==="electron_config"){electronConfigStyle=$("configStyle").value;data.electronConfigStyle=electronConfigStyle}persist();startGame(currentMode,$("askState").checked)});$("setupBack").addEventListener("click",()=>showScreen("menu"));$("submitAnswer").addEventListener("click",submit);$("endGame").type="button";$("endGame").onclick=finishGameNow;$("hintBtn").addEventListener("click",useHint);$("replay").addEventListener("click",()=>startGame(currentMode,askState));$("toMenu").addEventListener("click",()=>showScreen("menu"));$("zoomIn").addEventListener("click",()=>changeZoom(.15));$("zoomOut").addEventListener("click",()=>changeZoom(-.15));$("zoomReset").addEventListener("click",resetZoom);$("tableSearch").addEventListener("input",applyTableFilters);document.querySelectorAll(".legend-filter").forEach(button=>button.addEventListener("click",()=>{activeTableCategory=activeTableCategory===button.dataset.filter?null:button.dataset.filter;applyTableFilters()}));$("modalClose").addEventListener("click",closeModal);$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal()});document.addEventListener("keydown",e=>{if(e.key==="Enter"&&$("game").classList.contains("active")){if(e.target.closest&&e.target.closest("button"))return;e.preventDefault();submit()}if(e.key==="Escape")closeModal()});bindTablePan()}
 bootstrapMobileApp();
 </script>
 </body>
