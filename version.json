@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.1.3",
-  "notes": "نسخهٔ ۱.۱.۳: حذف کامل امضای کد از فرایند ساخت — نه امضای Authenticode ویندوز و نه امضای keystore اندروید؛ بنابراین هیچ secret یا گواهی‌ای برای build لازم نیست و ساخت دیگر به‌خاطر نبود کلید شکست نمی‌خورد. APK خروجی با کلید debug گریدل نصب‌شدنی است و AAB بدون امضا فقط برای نگهداری منتشر می‌شود. انتشار در GitHub Releases حالا حتی در صورت شکست یک پلتفرم انجام می‌شود و نام آن نسخه را نشان می‌دهد.",
+  "latest_version": "1.1.4",
+  "notes": "نسخهٔ ۱.۱.۴: اصلاح آپدیتر ویندوز که به‌جای جابه‌جایی رابط، همان نسخهٔ قبلی را دوباره باز می‌کرد. اسکریپت جابه‌جایی از فایل batch (که در پروسهٔ بدون کنسول، timeout در آن کار نمی‌کند و جابه‌جایی لغو می‌شد) به PowerShell با انتظار واقعی برای بستن برنامه، تلاش مجدد جابه‌جایی و بازگردانی خودکار در صورت شکست تغییر کرد و گزارش آن در update.log ذخیره می‌شود. پنجرهٔ به‌روزرسانی حالا اگر پوستهٔ EXE قدیمی باشد هشدار می‌دهد و دکمهٔ دریافت نصب‌کنندهٔ جدید را نشان می‌دهد. در اندروید، کلیدهای توان (بالانویس) در کیبورد آرایش الکترونی با بالانویس واقعی رندر می‌شوند تا از ارقام عادی قابل تشخیص باشند.",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer-windows.zip",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"
