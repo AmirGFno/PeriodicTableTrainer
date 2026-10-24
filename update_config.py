@@ -4,7 +4,7 @@ PTT_VERSION_URL can override the public repository manifest URL at runtime.
 """
 import os
 
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.1.2"
 VERSION_URL = os.environ.get(
     "PTT_VERSION_URL",
     "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/version.json",
