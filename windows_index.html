@@ -155,9 +155,6 @@ body::before{
   font-size:11px;opacity:.65;direction:ltr;justify-content:flex-end}
 .ptt-palette-foot kbd{background:var(--glass);border:1px solid var(--glass-line);border-radius:6px;
   padding:1px 6px;font-family:inherit;font-size:11px}
-.ptt-kbd-hint{position:fixed;inset-inline-start:16px;bottom:14px;z-index:60;font-size:11px;opacity:.6;
-  background:var(--glass);border:1px solid var(--glass-line);border-radius:10px;padding:5px 10px;
-  pointer-events:none;direction:ltr}
 
 </style>
 <title>آزمایشگاه جدول تناوبی</title>
@@ -472,7 +469,7 @@ body.light .ptable-element{color:#172238;text-shadow:none;box-shadow:0 2px 7px #
 <div id="updateBackdrop" class="update-backdrop" role="presentation" aria-hidden="true">
   <section class="update-dialog" role="dialog" aria-modal="true" aria-labelledby="updateTitle">
     <div class="update-head"><h2 id="updateTitle">به‌روزرسانی برنامه</h2><button type="button" id="updateClose" class="update-close" aria-label="بستن">×</button></div>
-    <div class="update-versions"><span>نسخهٔ فعلی: <b id="updateCurrentVersion">۱.۱.۱۳</b></span><span>نسخهٔ جدید: <b id="updateLatestVersion">—</b></span></div>
+    <div class="update-versions"><span>نسخهٔ فعلی: <b id="updateCurrentVersion">۱.۱.۱۴</b></span><span>نسخهٔ جدید: <b id="updateLatestVersion">—</b></span></div>
     <div id="updateNotes" class="update-notes">برای دریافت اطلاعات نسخه، دکمهٔ بررسی را بزنید.</div>
     <div id="updateStatus" class="update-status" role="status" aria-live="polite"></div>
     <div id="updateShellHint" class="update-notes" hidden></div>
@@ -680,7 +677,7 @@ function changeZoom(amount){zoomScale=Math.min(2.8,Math.max(.8,zoomScale+amount)
 function resetZoom(){zoomScale=1;panX=-50;panY=10;applyTransform()}
 function bindTablePan(){const vp=$("tableViewport");vp.addEventListener("pointerdown",e=>{dragStart={x:e.clientX,y:e.clientY,px:panX,py:panY};hasDragged=false});window.addEventListener("pointermove",e=>{if(!dragStart)return;const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;if(Math.abs(dx)+Math.abs(dy)>5){hasDragged=true;vp.classList.add("dragging")}if(hasDragged){panX=dragStart.px+dx;panY=dragStart.py+dy;applyTransform()}});const end=()=>{if(!dragStart)return;dragStart=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,50)};window.addEventListener("pointerup",end);window.addEventListener("pointercancel",end);vp.addEventListener("wheel",e=>{e.preventDefault();changeZoom(e.deltaY<0?.1:-.1)},{passive:false})}
 
-const CURRENT_APP_VERSION="1.1.13";
+const CURRENT_APP_VERSION="1.1.14";
 let updateDownloadRunning=false,shellOutdated=false;
 function openUpdateDialog(){const box=$("updateBackdrop");box.classList.add("open");box.setAttribute("aria-hidden","false");$("updateStatus").textContent="در حال بررسی نسخهٔ جدید...";$("updateDownload").hidden=true;$("updateNotes").textContent="";checkForAppUpdate()}
 function closeUpdateDialog(){if(updateDownloadRunning)return;$("updateBackdrop").classList.remove("open");$("updateBackdrop").setAttribute("aria-hidden","true")}
@@ -751,8 +748,6 @@ tryWindowsBackupRestore();
     +'<div class="ptt-palette-foot"><span>باز کردن</span><kbd>Ctrl</kbd><kbd>K</kbd><span>·</span><span>بستن</span><kbd>Esc</kbd></div></div>';
   d.body.appendChild(wrap);
   var input=wrap.querySelector("#pttPaletteInput"), list=wrap.querySelector("#pttPaletteList");
-  var hint=d.createElement("div");hint.className="ptt-kbd-hint";hint.textContent="Ctrl+K";
-  d.body.appendChild(hint);
   var items=[],active=0;
   function screens(){
     var out=[];
@@ -863,6 +858,49 @@ tryWindowsBackupRestore();
       },170);
     }
     draw();setInterval(draw,4200);
+  }catch(_){}
+})();
+</script>
+
+<style>
+/* ===== 1.1.14 layout fixes ===== */
+/* top bar: one clean three-zone row (title | navigation | theme) */
+@media (min-width:761px){
+  .topbar{position:sticky;top:0;z-index:70;display:grid;grid-template-columns:auto 1fr auto;
+    align-items:center;gap:18px;padding:12px 22px}
+  .brand{order:1;justify-self:start;text-align:start;flex:none;width:auto;
+    font-size:clamp(17px,1.55vw,22px);line-height:1.5}
+  .toolbar{order:2;justify-self:center;width:auto;flex:none;margin:0;flex-wrap:nowrap;
+    gap:8px;direction:rtl;padding:0;background:none;border:0}
+  .theme-toggle-area{order:3;justify-self:end;margin:0;padding:0;border:0;height:auto}
+}
+/* menu: a single centred column — title, then the element panel, then the modes */
+#menu{display:flex;flex-direction:column;align-items:center;gap:20px}
+#menu>.hero{order:0;width:100%;max-width:760px;text-align:center;margin:0 auto}
+#menu>.hero h1{margin-bottom:8px}
+#menu>.hero p{margin:0 auto;max-width:620px}
+.ptt-spot{order:1;position:static;width:min(100%,430px);margin:0 auto;grid-column:auto;grid-row:auto;
+  text-align:center}
+.ptt-spot #pttSpotBody .cfg{margin-inline:auto;max-width:100%}
+#menu>.mode-grid{order:2;width:100%;justify-content:center;justify-items:stretch}
+#menu>.mode-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));max-width:1020px;margin-inline:auto}
+#menu>.home-credit{order:3;width:100%;text-align:center;margin-top:4px}
+@media (max-width:879px){.ptt-spot{display:block}}
+</style>
+<script>
+;(function(){
+  try{
+    var original=window.showScreen;
+    if(typeof original!=="function")return;
+    window.showScreen=function(){
+      var out=original.apply(this,arguments);
+      try{
+        document.documentElement.scrollTop=0;
+        document.body.scrollTop=0;
+        if(typeof window.scrollTo==="function")window.scrollTo(0,0);
+      }catch(_){}
+      return out;
+    };
   }catch(_){}
 })();
 </script>

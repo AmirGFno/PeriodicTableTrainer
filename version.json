@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.1.13",
-  "notes": "نسخهٔ ۱.۱.۱۳: ظاهر ویندوز به همان حالت نسخهٔ ۱.۱.۱۱ برگشت (نوار بالای افقی، رنگ‌بندی قبلی و بدون شبکهٔ پس‌زمینه)؛ فقط پنل «عنصر بعدی» در منو باقی ماند. حالت روشن ویندوز هم با حذف آن لایه دوباره درست شد. در اندروید نوار بالای صفحه هنگام اسکرول ثابت می‌ماند.",
+  "latest_version": "1.1.14",
+  "notes": "نسخهٔ ۱.۱.۱۴: چیدمان ویندوز اصلاح شد — نوار بالا سه‌ناحیه‌ای و مرتب (عنوان راست، منو وسط، کلید تم چپ) و چسبان؛ منوی اصلی یک ستون وسط‌چین شد: عنوان، بعد پنل «عنصر بعدی»، بعد کارت‌های بازی. هر بخش نمای مستقل دارد و با جابه‌جایی، صفحه از بالا باز می‌شود. نشان Ctrl+K گوشهٔ صفحه حذف شد.",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer-windows.zip",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"
