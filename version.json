@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.1.6",
-  "notes": "نسخهٔ ۱.۱.۶: اصلاح هر دو آپدیتر. در ویندوز، رابط جدید حالا مستقیم و اتمیک در AppData جایگزین می‌شود و دیگر به اسکریپت خارجی (batch/PowerShell) سپرده نمی‌شود؛ همان اسکریپت باعث می‌شد پنجره بسته شود ولی نسخه عوض نشود. در اندروید، APK و AAB با یک کلید پایدار از GitHub Secrets امضا می‌شوند تا خطای «App not installed as package conflicts with an existing package» رفع شود؛ اگر کلید تنظیم نشده باشد، build با خروجی بدون امضا ادامه می‌دهد و fails نمی‌شود. فایل keystore_clean.txt از مخزن حذف شد.",
+  "latest_version": "1.1.7",
+  "notes": "نسخهٔ ۱.۱.۷: مسیر ساخت و امضای اندروید روی همان روش پایدار قبلی برگشت (assembleDebug + bundleRelease) و امضای کلید ثابت روی آن سوار شد؛ APK قبل از امضا zipalign می‌شود تا آپدیت درجا کار کند و اثر انگشت گواهی در لاگ چاپ می‌شود. آپلود آرتیفکت‌ها دیگر به موفقیت مرحلهٔ امضا وابسته نیست تا APK از دست نرود. گزارش ابزاراندروید هم قبل از build اضافه شد تا در صورت خطا علت سریع مشخص شود.",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer-windows.zip",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"

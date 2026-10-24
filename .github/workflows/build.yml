@@ -125,36 +125,30 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          set -euo pipefail
-          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEY_ALIAS" ] \
+             && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Persistent signing key detected; APK/AAB will be signed for in-place updates."
+          else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::ANDROID_KEYSTORE_BASE64 is not configured; building an unsigned fallback. In-place APK updates will fail until a persistent key is added."
-            exit 0
+            echo "::warning::Android signing secrets are incomplete; shipping a debug-signed APK. In-place APK updates will not work."
           fi
-          for name in ANDROID_KEY_ALIAS ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_PASSWORD; do
-            if [ -z "${!name:-}" ]; then
-              echo "::error::$name must be set together with ANDROID_KEYSTORE_BASE64"
-              exit 1
-            fi
-          done
-          echo "enabled=true" >> "$GITHUB_OUTPUT"
 
-      - name: Build Android APK and Play Store App Bundle (release)
-        if: ${{ steps.android_signing.outputs.enabled == 'true' }}
+      - name: Report Android toolchain
+        run: |
+          java -version || true
+          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-unset}"
+          ls -1 "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/nonexistent}}/build-tools" 2>/dev/null || true
+          df -h / | tail -1
+
+      # This exact build command has shipped successfully before; keep it as the
+      # single path instead of branching into assembleRelease.
+      - name: Build Android APK and Play Store App Bundle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease bundleRelease
-
-      # Without a persistent key an unsigned release APK cannot be installed at
-      # all, so fall back to the debug variant: installable, but not upgradable
-      # in place (the debug key is regenerated on every runner).
-      - name: Build Android APK and Play Store App Bundle (debug fallback)
-        if: ${{ steps.android_signing.outputs.enabled != 'true' }}
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug bundleRelease
+          ./gradlew --no-daemon --stacktrace assembleDebug bundleRelease
 
       - name: Sign APK and AAB with the persistent key
         if: ${{ steps.android_signing.outputs.enabled == 'true' }}
@@ -164,18 +158,27 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          set -euo pipefail
           mkdir -p android-output
           keystore="$RUNNER_TEMP/upload.jks"
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
-          build_tools="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-          aligned="$RUNNER_TEMP/app-aligned.apk"
-          "$build_tools/zipalign" -p -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk "$aligned"
-          "$build_tools/apksigner" sign --ks "$keystore" --ks-key-alias "$ANDROID_KEY_ALIAS" \
+
+          sdk_root="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          build_tools=$(ls -1d "$sdk_root"/build-tools/* 2>/dev/null | sort -V | tail -n 1)
+          echo "Using build-tools: $build_tools"
+          test -x "$build_tools/apksigner"
+          test -x "$build_tools/zipalign"
+
+          # zipalign must run before signing: aligning afterwards would break the v2 signature.
+          "$build_tools/zipalign" -p -f 4 \
+            android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/app-aligned.apk"
+          "$build_tools/apksigner" sign \
+            --ks "$keystore" --ks-key-alias "$ANDROID_KEY_ALIAS" \
             --ks-pass "pass:$ANDROID_KEYSTORE_PASSWORD" --key-pass "pass:$ANDROID_KEY_PASSWORD" \
-            --out android-output/app-debug.apk "$aligned"
+            --out android-output/app-debug.apk "$RUNNER_TEMP/app-aligned.apk"
+          echo "--- signature of the published APK ---"
           "$build_tools/apksigner" verify --print-certs android-output/app-debug.apk
-          rm -f "$aligned"
+          rm -f "$RUNNER_TEMP/app-aligned.apk"
+
           jarsigner -keystore "$keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" \
             -keypass "$ANDROID_KEY_PASSWORD" \
             -signedjar "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab" \
@@ -183,22 +186,21 @@ jobs:
           jarsigner -verify "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab"
           rm -f "$keystore"
 
-      - name: Stage debug fallback artifacts
+      - name: Stage debug-signed APK when no key is configured
         if: ${{ steps.android_signing.outputs.enabled != 'true' }}
         run: |
-          set -euo pipefail
           mkdir -p android-output
           cp android/app/build/outputs/apk/debug/app-debug.apk android-output/app-debug.apk
           cp android/app/build/outputs/bundle/release/app-release.aab \
              "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab"
 
-      - name: Collect Android artifacts
-        run: |
-          set -euo pipefail
-          mkdir -p android-output
-          ls -l android-output
+      - name: List Android artifacts
+        if: always()
+        run: ls -l android-output || true
+
 
       - name: Upload Android build artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: android-release
