@@ -472,7 +472,7 @@ body.light .ptable-element{color:#172238;text-shadow:none;box-shadow:0 2px 7px #
 <div id="updateBackdrop" class="update-backdrop" role="presentation" aria-hidden="true">
   <section class="update-dialog" role="dialog" aria-modal="true" aria-labelledby="updateTitle">
     <div class="update-head"><h2 id="updateTitle">به‌روزرسانی برنامه</h2><button type="button" id="updateClose" class="update-close" aria-label="بستن">×</button></div>
-    <div class="update-versions"><span>نسخهٔ فعلی: <b id="updateCurrentVersion">۱.۱.۱۲</b></span><span>نسخهٔ جدید: <b id="updateLatestVersion">—</b></span></div>
+    <div class="update-versions"><span>نسخهٔ فعلی: <b id="updateCurrentVersion">۱.۱.۱۳</b></span><span>نسخهٔ جدید: <b id="updateLatestVersion">—</b></span></div>
     <div id="updateNotes" class="update-notes">برای دریافت اطلاعات نسخه، دکمهٔ بررسی را بزنید.</div>
     <div id="updateStatus" class="update-status" role="status" aria-live="polite"></div>
     <div id="updateShellHint" class="update-notes" hidden></div>
@@ -680,7 +680,7 @@ function changeZoom(amount){zoomScale=Math.min(2.8,Math.max(.8,zoomScale+amount)
 function resetZoom(){zoomScale=1;panX=-50;panY=10;applyTransform()}
 function bindTablePan(){const vp=$("tableViewport");vp.addEventListener("pointerdown",e=>{dragStart={x:e.clientX,y:e.clientY,px:panX,py:panY};hasDragged=false});window.addEventListener("pointermove",e=>{if(!dragStart)return;const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;if(Math.abs(dx)+Math.abs(dy)>5){hasDragged=true;vp.classList.add("dragging")}if(hasDragged){panX=dragStart.px+dx;panY=dragStart.py+dy;applyTransform()}});const end=()=>{if(!dragStart)return;dragStart=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,50)};window.addEventListener("pointerup",end);window.addEventListener("pointercancel",end);vp.addEventListener("wheel",e=>{e.preventDefault();changeZoom(e.deltaY<0?.1:-.1)},{passive:false})}
 
-const CURRENT_APP_VERSION="1.1.12";
+const CURRENT_APP_VERSION="1.1.13";
 let updateDownloadRunning=false,shellOutdated=false;
 function openUpdateDialog(){const box=$("updateBackdrop");box.classList.add("open");box.setAttribute("aria-hidden","false");$("updateStatus").textContent="در حال بررسی نسخهٔ جدید...";$("updateDownload").hidden=true;$("updateNotes").textContent="";checkForAppUpdate()}
 function closeUpdateDialog(){if(updateDownloadRunning)return;$("updateBackdrop").classList.remove("open");$("updateBackdrop").setAttribute("aria-hidden","true")}
@@ -820,56 +820,7 @@ tryWindowsBackupRestore();
 })();
 
 </script>
-<style>
-/* ================= Windows shell: desktop control deck ================= */
-:root{--g1:#0e8fd0;--g2:#22b8d6;--rail:236px}
-body:not(.light){--glass:rgba(13,21,36,.66)}
-@media (min-width:880px){
-  .app{max-width:none;margin:0;padding:26px 34px 44px calc(var(--rail) + 34px)}
-  .topbar{position:fixed;inset-block:0;inset-inline-start:0;width:var(--rail);height:100vh;
-    display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:22px 16px 18px;
-    border-radius:0 24px 24px 0;border:0;border-inline-end:1px solid var(--glass-line);
-    box-shadow:14px 0 50px -30px rgba(6,14,30,.85);z-index:70}
-  .topbar::after{content:"";position:absolute;inset-block:0;inset-inline-end:-1px;width:1px;
-    background:linear-gradient(180deg,transparent,rgba(34,184,214,.55),transparent)}
-  .brand{order:-1;font-size:16px;font-weight:900;line-height:1.7;letter-spacing:.2px;
-    padding:0 6px 14px;border-bottom:1px solid var(--line);margin-bottom:8px}
-  .brand::before{content:"PTT";display:block;font-size:10px;letter-spacing:4px;color:var(--g2);opacity:.85}
-  .toolbar{order:1;flex-direction:column;align-items:stretch;gap:6px;background:none;border:0;padding:0}
-  .nav-btn{justify-content:flex-start;gap:10px;text-align:start;padding:11px 14px;border-radius:12px;
-    font-size:13.5px;font-weight:750;position:relative;border:1px solid transparent}
-  .nav-btn:hover{background:var(--glass);border-color:var(--glass-line)}
-  .nav-btn.active{background:linear-gradient(135deg,rgba(14,143,208,.22),rgba(34,184,214,.10));
-    border-color:rgba(34,184,214,.45);box-shadow:inset 0 0 0 1px rgba(34,184,214,.18)}
-  .nav-btn.active::after{content:"";position:absolute;inset-inline-start:-16px;top:50%;translate:0 -50%;
-    width:4px;height:22px;border-radius:0 6px 6px 0;background:linear-gradient(180deg,var(--g1),var(--g2))}
-  .nav-btn[data-page="menu"]::before{content:"◉"} .nav-btn[data-page="table"]::before{content:"▦"}
-  .nav-btn[data-page="stats"]::before{content:"◫"} .nav-btn[data-page="badges"]::before{content:"★"}
-  .nav-btn::before{font-size:15px;opacity:.9;inline-size:20px;text-align:center}
-  .theme-toggle-area{order:3;margin-top:auto;padding:12px 6px 0;border-top:1px solid var(--line);display:flex;justify-content:flex-start}
-  .hero{background:linear-gradient(135deg,rgba(14,143,208,.16),rgba(34,184,214,.06));
-    border:1px solid rgba(34,184,214,.28);border-radius:20px;padding:26px 28px}
-  .hero h1{font-size:26px;letter-spacing:-.3px}
-  .mode-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
-  .ptt-kbd-hint{inset-inline-start:auto;inset-inline-end:calc(var(--rail) + 18px);bottom:14px}
-}
-.ptt-build{position:fixed;inset-inline-end:calc(var(--rail,0px) + 16px);bottom:12px;z-index:60;
-  font-size:10px;letter-spacing:.3px;opacity:.5;direction:ltr;pointer-events:none;font-family:ui-monospace,monospace}
-body{background-image:linear-gradient(rgba(120,160,200,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(120,160,200,.05) 1px,transparent 1px);
-  background-size:44px 44px,44px 44px}
-</style>
-<script>
 
-;(function(){
-  var d=document;
-  var b=d.createElement('div');b.className='ptt-build';
-  var file=((location.pathname||"").split("/").pop()||"").replace(/\.html?$/i,"");
-  var v=(typeof CURRENT_APP_VERSION!=="undefined")?CURRENT_APP_VERSION:"";
-  b.textContent="v"+v+" · "+file;b.title="نسخهٔ رابط بارگذاری‌شده";
-  d.body.appendChild(b);
-})();
-
-</script>
 
 <style>
 /* Windows exclusives: desktop spot panel */
