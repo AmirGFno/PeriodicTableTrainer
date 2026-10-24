@@ -38,6 +38,8 @@ public class PeriodicTrainerNativePlugin extends Plugin {
     private static final long MAX_MANIFEST_BYTES = 1024L * 1024L;
     private static final long MAX_APK_BYTES = 500L * 1024L * 1024L;
 
+    private static final int MAX_BACKUP_SNAPSHOTS = 10;
+
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean updateRunning = new AtomicBoolean(false);
 
@@ -51,6 +53,120 @@ public class PeriodicTrainerNativePlugin extends Plugin {
         }
     }
 
+    /** Root of the nested on-device layout: files/data, files/data/backups, files/logs, files/updates. */
+    private File dataDir() {
+        return ensureDir(new File(getContext().getFilesDir(), "data"));
+    }
+
+    private File dataBackupDir() {
+        return ensureDir(new File(dataDir(), "backups"));
+    }
+
+    private File logsDir() {
+        return ensureDir(new File(getContext().getFilesDir(), "logs"));
+    }
+
+    private File updatesDir() {
+        return ensureDir(new File(getContext().getFilesDir(), "updates"));
+    }
+
+    private File ensureDir(File dir) {
+        if (!dir.exists() && !dir.mkdirs() && !dir.exists()) {
+            throw new IllegalStateException("Could not create " + dir.getName());
+        }
+        return dir;
+    }
+
+    /** Move the pre-1.1.9 flat records.json into the new data/ folder once. */
+    private void migrateLegacyRecords() {
+        try {
+            File legacy = new File(getContext().getFilesDir(), "records.json");
+            File target = new File(dataDir(), "records.json");
+            if (legacy.isFile() && !target.exists()) {
+                if (!legacy.renameTo(target)) {
+                    copyFile(legacy, target);
+                    if (!legacy.delete()) legacy.deleteOnExit();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void copyFile(File source, File target) throws Exception {
+        java.io.InputStream input = new FileInputStream(source);
+        java.io.OutputStream output = new FileOutputStream(target);
+        try {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = input.read(buffer)) > 0) output.write(buffer, 0, read);
+            output.flush();
+        } finally {
+            try { input.close(); } catch (Exception ignored) {}
+            try { output.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    /** Keep the newest snapshots so a corrupted state can always be restored. */
+    private void rotateBackups(File records) {
+        try {
+            File dir = dataBackupDir();
+            String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmmss-SSS", java.util.Locale.US)
+                .format(new java.util.Date());
+            copyFile(records, new File(dir, "records-" + stamp + ".json"));
+            File[] snapshots = dir.listFiles((d, name) -> name.startsWith("records-") && name.endsWith(".json"));
+            if (snapshots == null || snapshots.length <= MAX_BACKUP_SNAPSHOTS) return;
+            java.util.Arrays.sort(snapshots, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+            for (int index = MAX_BACKUP_SNAPSHOTS; index < snapshots.length; index++) {
+                if (!snapshots[index].delete()) snapshots[index].deleteOnExit();
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void writeMeta(JSONObject state) {
+        try {
+            JSONObject meta = new JSONObject();
+            meta.put("version", appVersion());
+            meta.put("saved_at", System.currentTimeMillis());
+            meta.put("bytes", state.toString().getBytes("UTF-8").length);
+            File target = new File(dataDir(), "meta.json");
+            AtomicFile atomic = new AtomicFile(target);
+            FileOutputStream output = null;
+            try {
+                output = atomic.startWrite();
+                output.write(meta.toString().getBytes("UTF-8"));
+                output.getFD().sync();
+                atomic.finishWrite(output);
+            } catch (Exception error) {
+                if (output != null) atomic.failWrite(output);
+                throw error;
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    @PluginMethod
+    public void storageInfo(PluginCall call) {
+        try {
+            migrateLegacyRecords();
+            JSObject result = new JSObject();
+            result.put("root", getContext().getFilesDir().getAbsolutePath());
+            result.put("data_dir", dataDir().getAbsolutePath());
+            result.put("backups_dir", dataBackupDir().getAbsolutePath());
+            result.put("logs_dir", logsDir().getAbsolutePath());
+            result.put("updates_dir", updatesDir().getAbsolutePath());
+            File records = new File(dataDir(), "records.json");
+            result.put("records_file", records.getAbsolutePath());
+            result.put("records_exists", records.isFile());
+            result.put("records_bytes", records.isFile() ? records.length() : 0);
+            File[] snapshots = dataBackupDir().listFiles((d, name) -> name.startsWith("records-"));
+            result.put("backup_count", snapshots == null ? 0 : snapshots.length);
+            call.resolve(result);
+        } catch (Exception error) {
+            call.reject("Could not read storage layout", error);
+        }
+    }
+
     @PluginMethod
     public void backupData(PluginCall call) {
         String payload = call.getString("payload");
@@ -60,7 +176,8 @@ public class PeriodicTrainerNativePlugin extends Plugin {
         }
         try {
             JSONObject value = new JSONObject(payload);
-            File target = new File(getContext().getFilesDir(), "records.json");
+            migrateLegacyRecords();
+            File target = new File(dataDir(), "records.json");
             AtomicFile atomic = new AtomicFile(target);
             FileOutputStream output = null;
             try {
@@ -72,8 +189,12 @@ public class PeriodicTrainerNativePlugin extends Plugin {
                 if (output != null) atomic.failWrite(output);
                 throw error;
             }
+            rotateBackups(target);
+            writeMeta(value);
             JSObject result = new JSObject();
             result.put("ok", true);
+            result.put("path", target.getAbsolutePath());
+            result.put("backup_count", dataBackupDir().listFiles() == null ? 0 : dataBackupDir().listFiles().length);
             call.resolve(result);
         } catch (Exception error) {
             call.reject("Could not save app data", error);
@@ -83,8 +204,9 @@ public class PeriodicTrainerNativePlugin extends Plugin {
     @PluginMethod
     public void restoreData(PluginCall call) {
         JSObject result = new JSObject();
-        File target = new File(getContext().getFilesDir(), "records.json");
         try {
+            migrateLegacyRecords();
+            File target = new File(dataDir(), "records.json");
             if (target.isFile()) {
                 byte[] bytes = readBounded(new FileInputStream(target), 2L * 1024L * 1024L);
                 result.put("data", new JSONObject(new String(bytes, "UTF-8")));
@@ -170,8 +292,7 @@ public class PeriodicTrainerNativePlugin extends Plugin {
                 throw new IllegalStateException("نشانی APK با version.json فعلی مطابقت ندارد؛ نسخه را دوباره بررسی کنید.");
             }
         }
-        File updateDir = new File(getContext().getFilesDir(), "updates");
-        if (!updateDir.exists() && !updateDir.mkdirs()) throw new IllegalStateException("ساخت پوشهٔ دانلود ممکن نشد.");
+        File updateDir = updatesDir();
         File apk = new File(updateDir, "PeriodicTableTrainer.apk");
         File versionFile = new File(updateDir, "downloaded-version.txt");
         boolean reuse = apk.isFile() && versionFile.isFile()
