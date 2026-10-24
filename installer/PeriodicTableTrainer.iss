@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.15"
+  #define MyAppVersion "1.1.16"
 #endif
 
 #define MyAppName "Periodic Table Trainer"

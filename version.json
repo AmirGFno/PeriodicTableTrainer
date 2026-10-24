@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.1.15",
-  "notes": "نسخهٔ ۱.۱.۱۵: نوار بالای ویندوز با انتخابگرهای درست بازنویسی شد (عنوان راست، منو وسط، کلید تم چپ، چسبان)؛ منو فقط در نمای فعال خودش دیده می‌شود تا صفحه‌ها کاملاً مستقل باشند؛ پنل «عنصر بعدی» کوچک‌تر و در ستون چپ و کارت‌های حالت بازی بزرگ‌تر شدند؛ بخش به‌روزرسانی یک دکمهٔ همه‌کاره دارد که خودش نصب کامل یا به‌روزرسانی رابط را انتخاب می‌کند و دکمهٔ «دریافت نصب‌کنندهٔ جدید» حذف شد.",
+  "latest_version": "1.1.16",
+  "notes": "نسخهٔ ۱.۱.۱۶: رابط ویندوز به همان چیدمان و مکانیزم نسخهٔ ۱.۱.۱۰ برگشت (نوار بالا، منو، کارت عنصر و صفحهٔ آرایش الکترونی)؛ فقط لایهٔ انیمیشن/شیشه و بخش به‌روزرسانی با دکمهٔ واحد باقی ماند. اندروید بدون تغییر.",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer-windows.zip",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"
