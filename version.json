@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.1.8",
-  "notes": "نسخهٔ ۱.۱.۸: امضای اندروید حالا رمز کلید را خودکار تشخیص می‌دهد؛ اگر ANDROID_KEY_PASSWORD با کلید هم‌خوان نباشد، امضا با رمز keystore دوباره تلاش می‌شود و خطای واقعی ابزار در لاگ چاپ می‌شود. مشخصات alias (نوع کلید، اعتبار و اثر انگشت) هم پیش از امضا گزارش می‌شود تا مشکل کلید سریع پیدا شود.",
+  "latest_version": "1.1.9",
+  "notes": "نسخهٔ ۱.۱.۹: ذخیره‌سازی داده‌ها به ساختار پوشه‌ای حرفه‌ای منتقل شد — data/records.json برای وضعیت فعلی، data/backups/ با ۱۰ نسخهٔ پشتیبان چرخشی، data/meta.json، و logs/ برای گزارش‌ها؛ دادهٔ قدیمی به‌طور خودکار منتقل می‌شود. آپدیتر ویندوز حالا می‌تواند نسخهٔ کامل را خودش نصب کند (دانلود بسته، اجرای نصب‌کننده به‌صورت بی‌صدا) تا دیگر لازم نباشد هر بار دستی نصب شود؛ رابط HTML قدیمی مانده در AppData هم کنار گذاشته می‌شود.",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer-windows.zip",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"

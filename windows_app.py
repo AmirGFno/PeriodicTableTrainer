@@ -8,6 +8,7 @@ import shutil
 import re
 import subprocess
 import sys
+import zipfile
 import threading
 import time
 from pathlib import Path
@@ -47,8 +48,83 @@ def app_data_dir() -> Path:
     return path
 
 
+DATA_DIR_NAME = "data"
+BACKUP_DIR_NAME = "backups"
+LOG_DIR_NAME = "logs"
+UPDATES_DIR_NAME = "updates"
+MAX_BACKUP_SNAPSHOTS = 10
+
+
+def _ensure_dir(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def data_dir() -> Path:
+    """Nested layout: %LOCALAPPDATA%\\PeriodicTableTrainer\\data."""
+    return _ensure_dir(app_data_dir() / DATA_DIR_NAME)
+
+
+def backups_dir() -> Path:
+    return _ensure_dir(data_dir() / BACKUP_DIR_NAME)
+
+
+def logs_dir() -> Path:
+    return _ensure_dir(app_data_dir() / LOG_DIR_NAME)
+
+
+def updates_dir() -> Path:
+    return _ensure_dir(app_data_dir() / UPDATES_DIR_NAME)
+
+
 def backup_file() -> Path:
-    return app_data_dir() / "records.json"
+    """Current state, migrated from the flat pre-1.1.9 location when needed."""
+    target = data_dir() / "records.json"
+    legacy = app_data_dir() / "records.json"
+    if legacy.is_file() and not target.is_file():
+        try:
+            shutil.move(str(legacy), str(target))
+            _append_update_log("migrated records.json into data/")
+        except OSError:
+            pass
+    return target
+
+
+def _rotate_backups(source: Path) -> int:
+    """Copy the state into data/backups and keep the newest snapshots."""
+    try:
+        # millisecond precision: several saves can land inside the same second
+        stamp = time.strftime("%Y%m%d-%H%M%S") + f"-{int(time.time() * 1000) % 1000:03d}"
+        destination = backups_dir() / f"records-{stamp}.json"
+        counter = 1
+        while destination.exists():  # two saves inside the same millisecond
+            destination = backups_dir() / f"records-{stamp}-{counter}.json"
+            counter += 1
+        shutil.copy2(source, destination)
+        snapshots = sorted(
+            backups_dir().glob("records-*.json"), key=lambda item: item.stat().st_mtime, reverse=True
+        )
+        for stale in snapshots[MAX_BACKUP_SNAPSHOTS:]:
+            stale.unlink(missing_ok=True)
+        return len(snapshots[:MAX_BACKUP_SNAPSHOTS])
+    except OSError as exc:
+        _append_update_log(f"backup rotation failed: {exc}")
+        return 0
+
+
+def _write_meta(payload_bytes: int) -> None:
+    meta = {
+        "version": APP_VERSION,
+        "saved_at": int(time.time()),
+        "bytes": payload_bytes,
+    }
+    try:
+        destination = data_dir() / "meta.json"
+        temporary = destination.with_suffix(".json.tmp")
+        temporary.write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+        os.replace(temporary, destination)
+    except OSError as exc:
+        _append_update_log(f"meta write failed: {exc}")
 
 
 def bundled_file(filename: str) -> Path:
@@ -100,6 +176,28 @@ def windows_html_file() -> Path:
     return existing[0]
 
 
+def _prune_stale_interface() -> None:
+    """Drop an AppData copy that is older than the copy shipped with the app.
+
+    A leftover interface from a failed update used to win over the freshly
+    installed one; version comparison covers that, but removing the stale file
+    keeps the AppData folder honest and easy to reason about.
+    """
+    try:
+        installed = app_directory() / "windows_index.html"
+        stored = app_data_dir() / "windows_index.html"
+        if not stored.is_file():
+            return
+        stored_version = _html_version(stored)
+        shipped_version = _html_version(installed) if installed.is_file() else None
+        if stored_version and shipped_version and stored_version < shipped_version:
+            backup = stored.with_name("windows_index.stale.html")
+            shutil.move(str(stored), str(backup))
+            _append_update_log(f"moved stale interface {stored_version} aside")
+    except OSError as exc:
+        _append_update_log(f"stale interface cleanup failed: {exc}")
+
+
 def current_windows_version() -> str:
     """Report the version of the HTML actually selected by this installation.
 
@@ -126,8 +224,8 @@ def fetch_version_manifest() -> dict[str, Any]:
 
 
 def update_log_file() -> Path:
-    """Diagnostics for the in-app updater, written next to the backups."""
-    return app_data_dir() / "update.log"
+    """Diagnostics for the in-app updater, kept beside the backups."""
+    return logs_dir() / "update.log"
 
 
 def _append_update_log(message: str) -> None:
@@ -185,6 +283,8 @@ class BackupApi:
             with _BACKUP_LOCK:
                 temporary.write_text(encoded, encoding="utf-8")
                 os.replace(temporary, destination)
+            _rotate_backups(destination)
+            _write_meta(len(encoded.encode("utf-8")))
             return True
         except (OSError, TypeError, ValueError):
             return False
@@ -234,6 +334,95 @@ class BackupApi:
             return {"ok": True}
         except Exception as exc:
             return {"ok": False, "error": f"بازکردن صفحهٔ دانلود ناموفق بود: {exc}"}
+
+    def update_full_app(self) -> dict[str, Any]:
+        """Download the Windows package and run its installer, so the EXE itself is replaced.
+
+        HTML-only updates cannot move the shell version; this path exists so the
+        application can finally upgrade itself instead of asking for a manual
+        download every release.
+        """
+        if not getattr(sys, "frozen", False):
+            return {"ok": False, "error": "نصب نسخهٔ کامل فقط در نسخهٔ EXE فعال است."}
+        with self._update_lock:
+            if self._update_running:
+                return {"ok": True, "message": "به‌روزرسانی در حال انجام است."}
+            self._update_running = True
+        threading.Thread(target=self._full_update_worker, name="windows-full-updater", daemon=True).start()
+        return {"ok": True}
+
+    def _download_binary(self, url: str, destination: Path, label: str) -> None:
+        request = Request(url, headers={"User-Agent": f"{APP_NAME}/{APP_VERSION}"})
+        temporary = destination.with_suffix(destination.suffix + ".part")
+        try:
+            with urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
+                length = int(response.headers.get("Content-Length", "0") or 0)
+                if length > MAX_UPDATE_BYTES:
+                    raise ValueError("فایل به‌روزرسانی بیش از حد بزرگ است")
+                received = 0
+                with temporary.open("wb") as output:
+                    while True:
+                        block = response.read(256 * 1024)
+                        if not block:
+                            break
+                        received += len(block)
+                        if received > MAX_UPDATE_BYTES:
+                            raise ValueError("فایل به‌روزرسانی بیش از حد بزرگ است")
+                        output.write(block)
+                        percent = int(received * 100 / length) if length else 0
+                        self._progress(min(percent, 99), label)
+            if received == 0:
+                raise ValueError("فایل دانلودشده خالی است")
+            os.replace(temporary, destination)
+        except Exception:
+            temporary.unlink(missing_ok=True)
+            raise
+
+    def _full_update_worker(self) -> None:
+        try:
+            self._progress(0, "در حال دانلود نسخهٔ جدید برنامه...")
+            manifest = fetch_version_manifest()
+            latest = str(manifest["latest_version"])
+            if _version_tuple(latest) <= _version_tuple(APP_VERSION):
+                raise ValueError("نسخهٔ جدیدتری برای ویندوز موجود نیست.")
+            url = _https_url(manifest.get("windows_url"))
+            package = updates_dir() / f"PeriodicTableTrainer-{latest}.zip"
+            self._download_binary(url, package, "در حال دانلود نسخهٔ جدید برنامه...")
+            extract_dir = updates_dir() / f"package-{latest}"
+            if extract_dir.exists():
+                shutil.rmtree(extract_dir, ignore_errors=True)
+            _ensure_dir(extract_dir)
+            with zipfile.ZipFile(package) as archive:
+                archive.extractall(extract_dir)
+            installers = sorted(extract_dir.rglob("*Setup*.exe"))
+            if not installers:
+                raise ValueError("نصب‌کننده در بستهٔ دانلودشده پیدا نشد.")
+            setup = installers[0]
+            _append_update_log(f"running {setup} silently for {latest}")
+            self._progress(100, "نصب‌کنندهٔ نسخهٔ جدید اجرا می‌شود؛ در صورت پرسش، اجازهٔ نصب را تأیید کنید.")
+            time.sleep(0.5)
+            subprocess.Popen(
+                [
+                    str(setup),
+                    "/VERYSILENT",
+                    "/SUPPRESSMSGBOXES",
+                    "/CLOSEAPPLICATIONS",
+                    "/NORESTART",
+                ],
+                cwd=str(setup.parent),
+                close_fds=True,
+            )
+            self.restart_requested = True
+            try:
+                (self._window or webview.active_window()).destroy()
+            except Exception:
+                pass
+        except Exception as exc:
+            _append_update_log(f"full update failed: {exc}")
+            self._error(f"دریافت نسخهٔ جدید ویندوز ناموفق بود: {exc}")
+        finally:
+            with self._update_lock:
+                self._update_running = False
 
     def _eval_js(self, script: str) -> None:
         try:
@@ -348,6 +537,7 @@ def _relaunch_self() -> None:
 
 
 def main() -> None:
+    _prune_stale_interface()
     html_file = windows_html_file()
     profile = app_data_dir() / "WebViewProfile"
     profile.mkdir(parents=True, exist_ok=True)
