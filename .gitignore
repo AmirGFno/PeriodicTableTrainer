@@ -1,3 +1,9 @@
 node_modules/
 android/
 *.iml
+
+# Signing material must never be committed
+*.jks
+*.keystore
+*.pfx
+*.p12

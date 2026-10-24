@@ -499,7 +499,7 @@ body.drawer-open{overflow:hidden}
   <section class="drawer-about" aria-labelledby="drawerAboutTitle">
     <h3 id="drawerAboutTitle">درباره برنامه</h3>
     <p>آزمایشگاه جدول تناوبی</p>
-    <p>نسخهٔ فعلی: <b id="aboutVersion">1.1.2</b></p>
+    <p>نسخهٔ فعلی: <b id="aboutVersion">1.1.3</b></p>
     <p>سازنده: <b>Amir GFno</b></p>
   </section>
 </aside>
@@ -520,7 +520,7 @@ body.drawer-open{overflow:hidden}
 <div id="updateBackdrop" class="update-backdrop" role="presentation" aria-hidden="true">
   <section class="update-dialog" role="dialog" aria-modal="true" aria-labelledby="updateTitle">
     <div class="update-head"><h2 id="updateTitle">به‌روزرسانی برنامه</h2><button type="button" id="updateClose" class="update-close" aria-label="بستن">×</button></div>
-    <div class="update-versions"><span>نسخهٔ فعلی: <b id="updateCurrentVersion">۱.۱.۲</b></span><span>نسخهٔ جدید: <b id="updateLatestVersion">—</b></span></div>
+    <div class="update-versions"><span>نسخهٔ فعلی: <b id="updateCurrentVersion">۱.۱.۳</b></span><span>نسخهٔ جدید: <b id="updateLatestVersion">—</b></span></div>
     <div id="updateNotes" class="update-notes">برای دریافت اطلاعات نسخه، دکمهٔ بررسی را بزنید.</div>
     <div id="updateStatus" class="update-status" role="status" aria-live="polite"></div>
     <div id="updateProgress" class="update-progress" hidden><div id="updateProgressFill" class="update-progress-fill"></div></div>
@@ -733,7 +733,7 @@ function beginTouchPan(touch,rect,preserveDrag=false){const point=tablePoint(tou
 function beginTouchPinch(touches,rect){const mid={x:(touches[0].clientX+touches[1].clientX)/2-rect.left,y:(touches[0].clientY+touches[1].clientY)/2-rect.top};touchGesture={type:"pinch",distance:Math.max(1,touchDistance(touches[0],touches[1])),zoom:zoomScale,contentX:(mid.x-panX)/zoomScale,contentY:(mid.y-panY)/zoomScale};hasDragged=true}
 function bindTablePan(){const vp=$("tableViewport");vp.addEventListener("pointerdown",e=>{if(e.pointerType==="touch")return;dragStart={x:e.clientX,y:e.clientY,px:panX,py:panY,pointerId:e.pointerId};hasDragged=false});window.addEventListener("pointermove",e=>{if(e.pointerType==="touch"||!dragStart)return;const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;if(Math.abs(dx)+Math.abs(dy)>5){hasDragged=true;vp.classList.add("dragging")}if(hasDragged){panX=dragStart.px+dx;panY=dragStart.py+dy;applyTransform()}});const endPointer=()=>{if(!dragStart)return;dragStart=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,70)};window.addEventListener("pointerup",endPointer);window.addEventListener("pointercancel",endPointer);vp.addEventListener("wheel",e=>{e.preventDefault();changeZoom(e.deltaY<0?.1:-.1)},{passive:false});vp.addEventListener("touchstart",e=>{if(!e.touches.length)return;const rect=vp.getBoundingClientRect();if(e.touches.length>=2)beginTouchPinch(e.touches,rect);else beginTouchPan(e.touches[0],rect)},{passive:false});vp.addEventListener("touchmove",e=>{if(!touchGesture)return;e.preventDefault();const rect=vp.getBoundingClientRect();if(e.touches.length>=2){if(touchGesture.type!=="pinch")beginTouchPinch(e.touches,rect);const mid={x:(e.touches[0].clientX+e.touches[1].clientX)/2-rect.left,y:(e.touches[0].clientY+e.touches[1].clientY)/2-rect.top};const distance=Math.max(1,touchDistance(e.touches[0],e.touches[1]));zoomScale=Math.min(2.8,Math.max(MIN_TABLE_ZOOM,touchGesture.zoom*distance/touchGesture.distance));panX=mid.x-touchGesture.contentX*zoomScale;panY=mid.y-touchGesture.contentY*zoomScale;tableUserZoomed=true;tableFitInitialized=true;hasDragged=true;applyTransform()}else if(e.touches.length===1){if(touchGesture.type!=="pan")beginTouchPan(e.touches[0],rect,touchGesture.type==="pinch");const point=tablePoint(e.touches[0],rect),dx=point.x-touchGesture.x,dy=point.y-touchGesture.y;if(Math.abs(dx)+Math.abs(dy)>5)hasDragged=true;if(hasDragged){panX=touchGesture.px+dx;panY=touchGesture.py+dy;applyTransform()}}},{passive:false});vp.addEventListener("touchend",e=>{const rect=vp.getBoundingClientRect();if(e.touches.length===1){beginTouchPan(e.touches[0],rect,touchGesture?.type==="pinch");return}if(e.touches.length>=2){beginTouchPinch(e.touches,rect);return}touchGesture=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,70)});vp.addEventListener("touchcancel",()=>{touchGesture=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,70)});window.addEventListener("resize",()=>{if($("table")?.classList.contains("active")){if(!tableUserZoomed)fitTableToWidth();else applyTransform()}})}
 
-const CURRENT_APP_VERSION="1.1.2";
+const CURRENT_APP_VERSION="1.1.3";
 let updateDownloadRunning=false,pendingAndroidUrl="";
 function openUpdateDialog(){const box=$("updateBackdrop");box.classList.add("open");box.setAttribute("aria-hidden","false");$("updateStatus").textContent="در حال بررسی نسخهٔ جدید...";$("updateDownload").hidden=true;$("updateNotes").textContent="";checkForAppUpdate()}
 function closeUpdateDialog(){if(updateDownloadRunning)return;$("updateBackdrop").classList.remove("open");$("updateBackdrop").setAttribute("aria-hidden","true")}
