@@ -124,77 +124,161 @@ def fetch_version_manifest() -> dict[str, Any]:
     return manifest
 
 
-def _update_batch_script(working_dir: str, exe_path: str) -> str:
-    """Generate a guarded AppData HTML swap and verified app restart batch."""
-    return f"""@echo off
-chcp 65001 >NUL
-setlocal EnableExtensions
-cd /d "%~dp0"
+def update_log_file() -> Path:
+    """Diagnostics for the in-app updater, written next to the backups."""
+    return app_data_dir() / "update.log"
 
-rem Give the WebView time to close, then force-close any remaining instance.
-timeout /t 3 /nobreak >NUL
-taskkill /f /im {EXE_NAME} >NUL 2>&1
-set "RETRIES=0"
-:wait_for_exit
-tasklist /FI "IMAGENAME eq {EXE_NAME}" 2>NUL | find /I "{EXE_NAME}" >NUL
-if errorlevel 1 goto process_closed
-set /a RETRIES+=1
-if %RETRIES% GEQ 20 goto exit_timeout
-timeout /t 1 /nobreak >NUL
-goto wait_for_exit
 
-:exit_timeout
-echo The old app did not exit; update swap was cancelled.
-goto cleanup
+def _append_update_log(message: str) -> None:
+    """Best-effort updater diagnostics; never raises into the UI thread."""
+    try:
+        stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        with update_log_file().open("a", encoding="utf-8") as log:
+            log.write(f"{stamp} {message}\n")
+    except OSError:
+        pass
 
-:process_closed
-if not exist "new_index.html" goto launch_fallback
-if exist "windows_index_old.html" del /q "windows_index_old.html"
-if not exist "windows_index.html" goto move_downloaded_html
-ren "windows_index.html" "windows_index_old.html"
-if errorlevel 1 goto restore_old
 
-:move_downloaded_html
-ren "new_index.html" "windows_index.html"
-if errorlevel 1 goto restore_old
-if not exist "windows_index.html" goto restore_old
+def _powershell_executable() -> Path:
+    """Locate powershell.exe; fall back to PATH lookup."""
+    candidate = (
+        Path(os.environ.get("SystemRoot", r"C:\Windows"))
+        / "System32"
+        / "WindowsPowerShell"
+        / "v1.0"
+        / "powershell.exe"
+    )
+    return candidate if candidate.is_file() else Path("powershell.exe")
 
-rem Start the EXE again; it selects the highest-version HTML from AppData.
-start "" /D "{working_dir}" "{exe_path}"
-set "RETRIES=0"
-:wait_for_new_app
-timeout /t 1 /nobreak >NUL
-tasklist /FI "IMAGENAME eq {EXE_NAME}" 2>NUL | find /I "{EXE_NAME}" >NUL
-if not errorlevel 1 goto update_started
-set /a RETRIES+=1
-if %RETRIES% GEQ 20 goto new_app_failed
-goto wait_for_new_app
 
-:update_started
-if exist "windows_index_old.html" del /q "windows_index_old.html"
-goto cleanup
+def _update_powershell_script(working_dir: str, exe_path: str) -> str:
+    """Generate the guarded HTML swap/restart helper.
 
-:new_app_failed
-echo The updated app did not start; restoring the previous HTML.
-taskkill /f /im {EXE_NAME} >NUL 2>&1
-timeout /t 2 /nobreak >NUL
+    A batch file cannot be used here: the helper runs detached without a
+    console, and ``timeout /t`` fails immediately in that situation, which
+    cancelled the swap and relaunched the previous interface. PowerShell
+    sleeps do not need a console, and its move/error handling is retried.
+    """
+    template = r"""$ErrorActionPreference = 'Continue'
+$dir = Split-Path -Parent $MyInvocation.MyCommand.Path
+Set-Location -LiteralPath $dir
+$log = Join-Path $dir 'update.log'
 
-:restore_old
-if exist "windows_index_old.html" (
-  if exist "windows_index.html" del /q "windows_index.html"
-  ren "windows_index_old.html" "windows_index.html"
-)
-if exist "new_index.html" del /q "new_index.html"
-goto launch_fallback
+function Write-UpdateLog([string]$Message) {
+    try {
+        Add-Content -LiteralPath $log -Value ((Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $Message) -Encoding UTF8
+    } catch {
+    }
+}
 
-:launch_fallback
-rem If no AppData HTML exists, the installed/bundled copy remains available.
-if exist "{exe_path}" start "" /D "{working_dir}" "{exe_path}"
+function Get-AppProcess {
+    return (Get-Process -Name '__EXE_BASE__' -ErrorAction SilentlyContinue)
+}
 
-:cleanup
-del /q "%~f0"
-endlocal
+function Wait-AppExit([int]$TimeoutSeconds) {
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-AppProcess) -and ((Get-Date) -lt $deadline)) {
+        Start-Sleep -Milliseconds 250
+    }
+    return (-not (Get-AppProcess))
+}
+
+$target = Join-Path $dir 'windows_index.html'
+$newFile = Join-Path $dir 'new_index.html'
+$backup = Join-Path $dir 'windows_index_old.html'
+$exe = '__EXE_PATH__'
+$work = '__WORK_DIR__'
+
+Write-UpdateLog '--- update swap started ---'
+
+if (-not (Wait-AppExit 15)) {
+    Write-UpdateLog 'app still running; forcing stop'
+    Get-AppProcess | Stop-Process -Force -ErrorAction SilentlyContinue
+    if (-not (Wait-AppExit 15)) {
+        Write-UpdateLog 'app could not be stopped; swap cancelled'
+        Remove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue
+        exit 1
+    }
+}
+Write-UpdateLog 'previous instance closed'
+
+if (-not (Test-Path -LiteralPath $newFile)) {
+    Write-UpdateLog 'new_index.html is missing; nothing to swap'
+    Remove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue
+    exit 1
+}
+
+$swapped = $false
+for ($attempt = 1; $attempt -le 10; $attempt++) {
+    try {
+        if (Test-Path -LiteralPath $target) {
+            Move-Item -LiteralPath $target -Destination $backup -Force
+        }
+        Move-Item -LiteralPath $newFile -Destination $target -Force
+        if (Test-Path -LiteralPath $target) {
+            $swapped = $true
+            break
+        }
+    } catch {
+        Write-UpdateLog ('swap attempt ' + $attempt + ' failed: ' + $_.Exception.Message)
+        Start-Sleep -Milliseconds 500
+    }
+}
+
+if ($swapped) {
+    Write-UpdateLog 'interface swapped in AppData'
+} else {
+    Write-UpdateLog 'swap failed; keeping the previous interface'
+    if ((Test-Path -LiteralPath $backup) -and (-not (Test-Path -LiteralPath $target))) {
+        Move-Item -LiteralPath $backup -Destination $target -Force -ErrorAction SilentlyContinue
+    }
+}
+
+$started = $false
+if (Test-Path -LiteralPath $exe) {
+    try {
+        Start-Process -FilePath $exe -WorkingDirectory $work
+        $deadline = (Get-Date).AddSeconds(25)
+        while (((Get-Date) -lt $deadline) -and (-not (Get-AppProcess))) {
+            Start-Sleep -Milliseconds 250
+        }
+        $started = [bool](Get-AppProcess)
+    } catch {
+        Write-UpdateLog ('relaunch failed: ' + $_.Exception.Message)
+    }
+}
+
+if ($started) {
+    Write-UpdateLog 'app relaunched'
+    Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue
+} else {
+    Write-UpdateLog 'relaunched app did not start; restoring the previous interface'
+    try {
+        if (Test-Path -LiteralPath $backup) {
+            if (Test-Path -LiteralPath $target) {
+                Remove-Item -LiteralPath $target -Force
+            }
+            Move-Item -LiteralPath $backup -Destination $target -Force
+        }
+    } catch {
+        Write-UpdateLog ('restore failed: ' + $_.Exception.Message)
+    }
+    if (Test-Path -LiteralPath $exe) {
+        try {
+            Start-Process -FilePath $exe -WorkingDirectory $work
+        } catch {
+        }
+    }
+}
+
+Remove-Item -LiteralPath $newFile -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue
 """
+    return (
+        template.replace("__EXE_BASE__", Path(EXE_NAME).stem)
+        .replace("__EXE_PATH__", str(exe_path).replace("'", "''"))
+        .replace("__WORK_DIR__", str(working_dir).replace("'", "''"))
+    )
 
 
 class BackupApi:
@@ -247,9 +331,26 @@ class BackupApi:
             }
             if available:
                 result["windows_html_url"] = _https_url(manifest.get("windows_html_url"))
+            # APP_VERSION is baked into the EXE at build time. When it is older
+            # than the latest release, the HTML-only in-app update cannot move
+            # the shell forward and the fresh installer has to be run once.
+            result["shell_version"] = APP_VERSION
+            if _version_tuple(latest) > _version_tuple(APP_VERSION):
+                result["shell_outdated"] = True
+                result["windows_url"] = _https_url(manifest.get("windows_url"))
             return result
         except Exception as exc:
             return {"error": f"بررسی نسخه ناموفق بود: {exc}"}
+
+    def open_download_page(self) -> dict[str, Any]:
+        """Open the installer download page in the default browser."""
+        try:
+            manifest = fetch_version_manifest()
+            url = _https_url(manifest.get("windows_url"))
+            os.startfile(url)  # type: ignore[attr-defined]
+            return {"ok": True}
+        except Exception as exc:
+            return {"ok": False, "error": f"بازکردن صفحهٔ دانلود ناموفق بود: {exc}"}
 
     def _eval_js(self, script: str) -> None:
         try:
@@ -266,7 +367,7 @@ class BackupApi:
         self._eval_js(f"window.showUpdateError({json.dumps(message, ensure_ascii=False)})")
 
     def update_windows(self) -> dict[str, Any]:
-        """Download the replaceable HTML, then hand off its swap to update.bat."""
+        """Download the replaceable HTML, then hand its swap to update.ps1."""
         if not getattr(sys, "frozen", False):
             return {"ok": False, "error": "به‌روزرسانی خودکار فقط در نسخهٔ EXE فعال است."}
         with self._update_lock:
@@ -332,16 +433,32 @@ class BackupApi:
 
             # Install folders such as Program Files are protected. Keep the
             # replaceable HTML in per-user AppData, then restart the same EXE.
-            bat = data_dir / "update.bat"
+            script = data_dir / "update.ps1"
             exe_path = str(app_dir / EXE_NAME)
             working_dir = str(app_dir)
-            bat.write_text(_update_batch_script(working_dir, exe_path), encoding="utf-8", newline="")
-            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
-            subprocess.Popen(["cmd.exe", "/c", bat.name], cwd=str(data_dir), creationflags=creationflags, close_fds=True)
+            script.write_text(
+                _update_powershell_script(working_dir, exe_path), encoding="utf-8-sig", newline="\r\n"
+            )
+            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
+            subprocess.Popen(
+                [
+                    str(_powershell_executable()),
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    str(script),
+                ],
+                cwd=str(data_dir),
+                creationflags=creationflags,
+                close_fds=True,
+            )
+            _append_update_log(f"downloaded HTML {downloaded_version}; restarting via update.ps1")
             self.restart_requested = True
             self._progress(
                 100,
-                "برنامه برای اعمال تغییرات بسته می‌شود. لطفاً چند لحظه صبر کنید و از بستن پنجره‌های سیاه رنگ خودداری کنید.",
+                "برنامه برای اعمال تغییرات بسته می‌شود و چند لحظه بعد خودکار باز می‌شود. لطفاً صبر کنید.",
             )
             time.sleep(0.3)
             try:
