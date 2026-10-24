@@ -330,7 +330,7 @@ body.light .ptable-element{color:#172238;text-shadow:none;box-shadow:0 2px 7px #
 <div id="updateBackdrop" class="update-backdrop" role="presentation" aria-hidden="true">
   <section class="update-dialog" role="dialog" aria-modal="true" aria-labelledby="updateTitle">
     <div class="update-head"><h2 id="updateTitle">به‌روزرسانی برنامه</h2><button type="button" id="updateClose" class="update-close" aria-label="بستن">×</button></div>
-    <div class="update-versions"><span>نسخهٔ فعلی: <b id="updateCurrentVersion">۱.۱.۷</b></span><span>نسخهٔ جدید: <b id="updateLatestVersion">—</b></span></div>
+    <div class="update-versions"><span>نسخهٔ فعلی: <b id="updateCurrentVersion">۱.۱.۸</b></span><span>نسخهٔ جدید: <b id="updateLatestVersion">—</b></span></div>
     <div id="updateNotes" class="update-notes">برای دریافت اطلاعات نسخه، دکمهٔ بررسی را بزنید.</div>
     <div id="updateStatus" class="update-status" role="status" aria-live="polite"></div>
     <div id="updateShellHint" class="update-notes" hidden></div>
@@ -536,7 +536,7 @@ function changeZoom(amount){zoomScale=Math.min(2.8,Math.max(.8,zoomScale+amount)
 function resetZoom(){zoomScale=1;panX=-50;panY=10;applyTransform()}
 function bindTablePan(){const vp=$("tableViewport");vp.addEventListener("pointerdown",e=>{dragStart={x:e.clientX,y:e.clientY,px:panX,py:panY};hasDragged=false});window.addEventListener("pointermove",e=>{if(!dragStart)return;const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;if(Math.abs(dx)+Math.abs(dy)>5){hasDragged=true;vp.classList.add("dragging")}if(hasDragged){panX=dragStart.px+dx;panY=dragStart.py+dy;applyTransform()}});const end=()=>{if(!dragStart)return;dragStart=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,50)};window.addEventListener("pointerup",end);window.addEventListener("pointercancel",end);vp.addEventListener("wheel",e=>{e.preventDefault();changeZoom(e.deltaY<0?.1:-.1)},{passive:false})}
 
-const CURRENT_APP_VERSION="1.1.7";
+const CURRENT_APP_VERSION="1.1.8";
 let updateDownloadRunning=false;
 function openUpdateDialog(){const box=$("updateBackdrop");box.classList.add("open");box.setAttribute("aria-hidden","false");$("updateStatus").textContent="در حال بررسی نسخهٔ جدید...";$("updateDownload").hidden=true;$("updateNotes").textContent="";checkForAppUpdate()}
 function closeUpdateDialog(){if(updateDownloadRunning)return;$("updateBackdrop").classList.remove("open");$("updateBackdrop").setAttribute("aria-hidden","true")}

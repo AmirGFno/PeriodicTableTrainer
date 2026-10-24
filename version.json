@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.1.7",
-  "notes": "نسخهٔ ۱.۱.۷: مسیر ساخت و امضای اندروید روی همان روش پایدار قبلی برگشت (assembleDebug + bundleRelease) و امضای کلید ثابت روی آن سوار شد؛ APK قبل از امضا zipalign می‌شود تا آپدیت درجا کار کند و اثر انگشت گواهی در لاگ چاپ می‌شود. آپلود آرتیفکت‌ها دیگر به موفقیت مرحلهٔ امضا وابسته نیست تا APK از دست نرود. گزارش ابزاراندروید هم قبل از build اضافه شد تا در صورت خطا علت سریع مشخص شود.",
+  "latest_version": "1.1.8",
+  "notes": "نسخهٔ ۱.۱.۸: امضای اندروید حالا رمز کلید را خودکار تشخیص می‌دهد؛ اگر ANDROID_KEY_PASSWORD با کلید هم‌خوان نباشد، امضا با رمز keystore دوباره تلاش می‌شود و خطای واقعی ابزار در لاگ چاپ می‌شود. مشخصات alias (نوع کلید، اعتبار و اثر انگشت) هم پیش از امضا گزارش می‌شود تا مشکل کلید سریع پیدا شود.",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer-windows.zip",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"
