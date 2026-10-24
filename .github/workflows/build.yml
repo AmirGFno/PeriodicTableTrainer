@@ -114,19 +114,89 @@ jobs:
           python3 capacitor/scripts/prepare_android.py
           npx cap sync android
 
-      - name: Build Android APK and Play Store App Bundle (no signing)
+      # In-place APK upgrades only work when every build carries the same
+      # signing key; a freshly generated debug key produces
+      # "App not installed as package conflicts with an existing package".
+      - name: Detect optional persistent Android signing key
+        id: android_signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::ANDROID_KEYSTORE_BASE64 is not configured; building an unsigned fallback. In-place APK updates will fail until a persistent key is added."
+            exit 0
+          fi
+          for name in ANDROID_KEY_ALIAS ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name must be set together with ANDROID_KEYSTORE_BASE64"
+              exit 1
+            fi
+          done
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build Android APK and Play Store App Bundle (release)
+        if: ${{ steps.android_signing.outputs.enabled == 'true' }}
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease bundleRelease
+
+      # Without a persistent key an unsigned release APK cannot be installed at
+      # all, so fall back to the debug variant: installable, but not upgradable
+      # in place (the debug key is regenerated on every runner).
+      - name: Build Android APK and Play Store App Bundle (debug fallback)
+        if: ${{ steps.android_signing.outputs.enabled != 'true' }}
         run: |
           cd android
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug bundleRelease
 
-      - name: Stage Android artifacts
+      - name: Sign APK and AAB with the persistent key
+        if: ${{ steps.android_signing.outputs.enabled == 'true' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p android-output
+          keystore="$RUNNER_TEMP/upload.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          build_tools="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          aligned="$RUNNER_TEMP/app-aligned.apk"
+          "$build_tools/zipalign" -p -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk "$aligned"
+          "$build_tools/apksigner" sign --ks "$keystore" --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass "pass:$ANDROID_KEYSTORE_PASSWORD" --key-pass "pass:$ANDROID_KEY_PASSWORD" \
+            --out android-output/app-debug.apk "$aligned"
+          "$build_tools/apksigner" verify --print-certs android-output/app-debug.apk
+          rm -f "$aligned"
+          jarsigner -keystore "$keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -keypass "$ANDROID_KEY_PASSWORD" \
+            -signedjar "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab" \
+            android/app/build/outputs/bundle/release/app-release.aab "$ANDROID_KEY_ALIAS"
+          jarsigner -verify "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab"
+          rm -f "$keystore"
+
+      - name: Stage debug fallback artifacts
+        if: ${{ steps.android_signing.outputs.enabled != 'true' }}
         run: |
           set -euo pipefail
           mkdir -p android-output
           cp android/app/build/outputs/apk/debug/app-debug.apk android-output/app-debug.apk
           cp android/app/build/outputs/bundle/release/app-release.aab \
              "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab"
+
+      - name: Collect Android artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p android-output
+          ls -l android-output
 
       - name: Upload Android build artifacts
         uses: actions/upload-artifact@v4
@@ -181,8 +251,9 @@ jobs:
             |---|---|
             | `PeriodicTableTrainer-windows.zip` | نصب‌کنندهٔ ویندوز + راهنما (بدون امضای Authenticode؛ ممکن است SmartScreen هشدار بدهد) |
             | `windows_index.html` | رابط ویندوز برای به‌روزرسانی درون‌برنامه‌ای |
-            | `app-debug.apk` | APK اندروید برای نصب جانبی (با کلید debug گریدل امضا شده است) |
-            | `PeriodicTableTrainer-*.aab` | App Bundle بدون امضا، فقط برای نگهداری؛ پیش از بارگذاری در Play Console باید با کلید upload خودتان امضا شود |
+            | `app-debug.apk` | APK اندروید برای نصب جانبی و به‌روزرسانی درون‌برنامه‌ای (با کلید پایدار مخزن امضا شده است) |
+            | — | اگر کلید امضا در Secrets تنظیم نشده باشد، همان APK با کلید debug ساخته می‌شود و به‌روزرسانی درجا کار نمی‌کند |
+            | `PeriodicTableTrainer-*.aab` | App Bundle امضاشده با همان کلید پایدار، برای بارگذاری دستی در Play Console |
 
             AAB در این workflow به Google Play ارسال نمی‌شود؛ انتشار در Play Console دستی است.
           files: release_assets/*
