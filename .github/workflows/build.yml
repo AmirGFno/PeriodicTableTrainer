@@ -69,12 +69,15 @@ jobs:
           Copy-Item $setup "dist/windows-package/"
           Copy-Item "installer/Readme.txt" "dist/windows-package/Readme.txt"
           Compress-Archive -Path "dist/windows-package/*" -DestinationPath "dist/PeriodicTableTrainer-windows.zip" -Force
+          # A copy whose file name carries the version: the stable name above is
+          # reused by every release, which made it easy to install a stale ZIP.
+          Copy-Item "dist/PeriodicTableTrainer-windows.zip" "dist/PeriodicTableTrainer-windows-$version.zip" -Force
 
       - name: Upload Windows installer ZIP
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer-zip
-          path: dist/PeriodicTableTrainer-windows.zip
+          path: dist/PeriodicTableTrainer-windows*.zip
           if-no-files-found: error
           retention-days: 14
 
@@ -325,6 +328,7 @@ jobs:
 
             | فایل | توضیح |
             |---|---|
+            | `PeriodicTableTrainer-windows-<نسخه>.zip` | همان بستهٔ ویندوز با نام نسخه‌دار — برای اینکه اشتباهی فایل قدیمی نصب نشود |
             | `PeriodicTableTrainer-windows.zip` | نصب‌کنندهٔ ویندوز + راهنما (بدون امضای Authenticode؛ ممکن است SmartScreen هشدار بدهد) |
             | `windows_index.html` | رابط ویندوز برای به‌روزرسانی درون‌برنامه‌ای |
             | `app-debug.apk` | APK اندروید برای نصب جانبی و به‌روزرسانی درون‌برنامه‌ای (با کلید پایدار مخزن امضا شده است) |

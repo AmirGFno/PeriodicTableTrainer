@@ -198,6 +198,32 @@ def _prune_stale_interface() -> None:
         _append_update_log(f"stale interface cleanup failed: {exc}")
 
 
+def interface_details() -> dict[str, str]:
+    """Describe which interface file the shell really loaded.
+
+    The version shown in the update dialog used to fall back to APP_VERSION when
+    the loaded HTML had no version marker, which made an old interface look
+    current. Reporting the path and its source makes that impossible.
+    """
+    try:
+        path = windows_html_file()
+    except FileNotFoundError as exc:
+        return {"path": "", "version": "", "source": "missing", "error": str(exc)}
+    version = _html_version_text(path) or ""
+    source = "unknown"
+    try:
+        parent = path.parent.resolve()
+        if parent == app_data_dir().resolve():
+            source = "AppData"
+        elif parent == app_directory().resolve():
+            source = "install"
+        else:
+            source = "bundle"
+    except OSError:
+        pass
+    return {"path": str(path), "version": version, "source": source}
+
+
 def current_windows_version() -> str:
     """Report the version of the HTML actually selected by this installation.
 
@@ -317,6 +343,10 @@ class BackupApi:
             # APP_VERSION is baked into the EXE at build time. When it is older
             # than the latest release, the HTML-only in-app update cannot move
             # the shell forward and the fresh installer has to be run once.
+            details = interface_details()
+            result["interface_path"] = details["path"]
+            result["interface_version"] = details["version"]
+            result["interface_source"] = details["source"]
             result["shell_version"] = APP_VERSION
             if _version_tuple(latest) > _version_tuple(APP_VERSION):
                 result["shell_outdated"] = True
@@ -543,7 +573,7 @@ def main() -> None:
     profile.mkdir(parents=True, exist_ok=True)
     api = BackupApi()
     window = webview.create_window(
-        title="مربی جدول تناوبی",
+        title=f"مربی جدول تناوبی — نسخهٔ {APP_VERSION}",
         url=str(html_file),
         js_api=api,
         width=1280,
