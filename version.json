@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.1.12",
-  "notes": "نسخهٔ ۱.۱.۱۲: رفع علت اصلی «اعمال نشدن آپدیت در ویندوز» — رابط حالا از یک فایل با نام متغیر بر اساس هش محتوا بارگذاری می‌شود تا حافظهٔ نهان WebView2 نسخهٔ قدیمی را نشان ندهد؛ نسخهٔ رابط بارگذاری‌شده هم گوشهٔ صفحه دیده می‌شود. ویندوز پوستهٔ کاملاً متفاوتی گرفت: نوار کناری ثابت با ناوبری عمودی، هویت آبی-فیروزه‌ای، شبکهٔ پس‌زمینه، هدر داشبوردی و پنل «عنصر بعدی». اندروید هم نوار پایین شیشه‌ای با آیکون، هویت بنفش-صورتی و کارت‌های نرم‌تر گرفت.",
+  "latest_version": "1.1.13",
+  "notes": "نسخهٔ ۱.۱.۱۳: ظاهر ویندوز به همان حالت نسخهٔ ۱.۱.۱۱ برگشت (نوار بالای افقی، رنگ‌بندی قبلی و بدون شبکهٔ پس‌زمینه)؛ فقط پنل «عنصر بعدی» در منو باقی ماند. حالت روشن ویندوز هم با حذف آن لایه دوباره درست شد. در اندروید نوار بالای صفحه هنگام اسکرول ثابت می‌ماند.",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer-windows.zip",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"
