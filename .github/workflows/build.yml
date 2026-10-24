@@ -2,6 +2,7 @@ name: Build Windows Installer, Android APK, and Play Bundle
 
 on:
   push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -44,48 +45,6 @@ jobs:
           # from the updater takes precedence on the next launch.
           Copy-Item "windows_index.html" "dist/PeriodicTableTrainer/windows_index.html" -Force
 
-      - name: Detect optional Windows Authenticode certificate
-        id: windows_signing
-        shell: pwsh
-        env:
-          WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
-          WINDOWS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
-        run: |
-          $hasCertificate = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_CERTIFICATE_BASE64)
-          $hasPassword = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_CERTIFICATE_PASSWORD)
-          if ($hasCertificate -ne $hasPassword) {
-            throw "Set both Windows signing secrets or leave both empty."
-          }
-          if ($hasCertificate) {
-            "enabled=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          } else {
-            Write-Warning "No Windows signing certificate configured; continuing with an unsigned EXE and installer. SmartScreen may show its warning."
-            "enabled=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          }
-
-      - name: Sign Windows application EXE (optional)
-        if: ${{ steps.windows_signing.outputs.enabled == 'true' }}
-        shell: pwsh
-        env:
-          WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
-          WINDOWS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
-        run: |
-          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Filter signtool.exe -File -Recurse |
-            Where-Object { $_.FullName -match '\\x64\\signtool.exe$' } |
-            Sort-Object FullName -Descending | Select-Object -First 1
-          if (-not $signtool) { throw "Windows SDK signtool.exe was not found" }
-          $certificatePath = Join-Path $env:RUNNER_TEMP "PeriodicTableTrainer-signing.pfx"
-          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:WINDOWS_SIGNING_CERTIFICATE_BASE64.Trim()))
-          try {
-            $file = "dist/PeriodicTableTrainer/PeriodicTableTrainer.exe"
-            & $signtool.FullName sign /fd SHA256 /tr "http://timestamp.digicert.com" /td SHA256 /f $certificatePath /p $env:WINDOWS_SIGNING_CERTIFICATE_PASSWORD $file
-            if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed: $file" }
-            & $signtool.FullName verify /pa /v $file
-            if ($LASTEXITCODE -ne 0) { throw "Authenticode signature verification failed: $file" }
-          } finally {
-            Remove-Item $certificatePath -Force -ErrorAction SilentlyContinue
-          }
-
       - name: Build Windows installer with Inno Setup
         shell: pwsh
         run: |
@@ -99,30 +58,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed" }
           $setup = "dist/installer/PeriodicTableTrainer-Setup-$version.exe"
           if (-not (Test-Path $setup)) { throw "Setup executable was not created: $setup" }
-
-      - name: Sign Windows installer (optional)
-        if: ${{ steps.windows_signing.outputs.enabled == 'true' }}
-        shell: pwsh
-        env:
-          WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
-          WINDOWS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
-        run: |
-          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Filter signtool.exe -File -Recurse |
-            Where-Object { $_.FullName -match '\\x64\\signtool.exe$' } |
-            Sort-Object FullName -Descending | Select-Object -First 1
-          if (-not $signtool) { throw "Windows SDK signtool.exe was not found" }
-          $certificatePath = Join-Path $env:RUNNER_TEMP "PeriodicTableTrainer-signing.pfx"
-          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:WINDOWS_SIGNING_CERTIFICATE_BASE64.Trim()))
-          try {
-            $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
-            $file = "dist/installer/PeriodicTableTrainer-Setup-$version.exe"
-            & $signtool.FullName sign /fd SHA256 /tr "http://timestamp.digicert.com" /td SHA256 /f $certificatePath /p $env:WINDOWS_SIGNING_CERTIFICATE_PASSWORD $file
-            if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed: $file" }
-            & $signtool.FullName verify /pa /v $file
-            if ($LASTEXITCODE -ne 0) { throw "Authenticode signature verification failed: $file" }
-          } finally {
-            Remove-Item $certificatePath -Force -ErrorAction SilentlyContinue
-          }
 
       - name: Package Windows installer ZIP
         shell: pwsh
@@ -152,7 +87,7 @@ jobs:
           retention-days: 14
 
   build-android:
-    name: Build Android APK and AAB (Capacitor 8 / API 36)
+    name: Build Android APK and AAB (Capacitor 8 / API 36, unsigned)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -179,91 +114,76 @@ jobs:
           python3 capacitor/scripts/prepare_android.py
           npx cap sync android
 
-      - name: Select installed Android Build Tools
-        id: android_tools
-        run: |
-          set -euo pipefail
-          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-          test -n "$sdk_root"
-          build_tools="$(find "$sdk_root/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -n 1)"
-          test -n "$build_tools"
-          echo "version=$build_tools" >> "$GITHUB_OUTPUT"
-
-      - name: Build Android Release APK and Play Store App Bundle (Unsigned)
+      - name: Build Android APK and Play Store App Bundle (no signing)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease bundleRelease
+          ./gradlew --no-daemon assembleDebug bundleRelease
 
-      - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
-        id: sign_app
-        with:
-          releaseDirectory: android/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: ${{ steps.android_tools.outputs.version }}
-
-      - name: Stage signed APK under the updater's stable filename
+      - name: Stage Android artifacts
         run: |
           set -euo pipefail
-          mkdir -p signed-output
-          cp "${{ steps.sign_app.outputs.signedReleaseFile }}" signed-output/app-debug.apk
+          mkdir -p android-output
+          cp android/app/build/outputs/apk/debug/app-debug.apk android-output/app-debug.apk
+          cp android/app/build/outputs/bundle/release/app-release.aab \
+             "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab"
 
-      - name: Sign Play Store App Bundle with the persistent release key
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          test -n "$ANDROID_KEYSTORE_BASE64"
-          test -n "$ANDROID_KEY_ALIAS"
-          test -n "$ANDROID_KEYSTORE_PASSWORD"
-          test -n "$ANDROID_KEY_PASSWORD"
-          keystore="$RUNNER_TEMP/periodic-trainer-upload.jks"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
-          unsigned="android/app/build/outputs/bundle/release/app-release.aab"
-          signed="signed-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab"
-          mkdir -p signed-output
-          jarsigner -keystore "$keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" \
-            -keypass "$ANDROID_KEY_PASSWORD" -signedjar "$signed" "$unsigned" "$ANDROID_KEY_ALIAS"
-          jarsigner -verify "$signed"
-          rm -f "$keystore"
-
-      - name: Upload Android release artifacts
+      - name: Upload Android build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-release
           path: |
-            signed-output/app-debug.apk
-            signed-output/PeriodicTableTrainer-${{ github.run_number }}.aab
+            android-output/app-debug.apk
+            android-output/PeriodicTableTrainer-${{ github.run_number }}.aab
           if-no-files-found: error
           retention-days: 14
 
   release:
     name: Publish build artifacts to GitHub Releases
     needs: [windows, build-android]
+    # Publish whatever was built, even if one platform failed, so a single
+    # platform problem can never block the other platform's release.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Read application version
+        id: app_version
+        run: |
+          version=$(grep -m1 '"version"' package.json | cut -d'"' -f4)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Publishing v$version"
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           path: release_assets
           merge-multiple: true
 
-      - name: Create a release for this push
+      - name: List release assets
+        run: ls -l release_assets
+
+      - name: Create or update the release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_id }}-${{ github.run_attempt }}
-          name: Build ${{ github.run_number }}
+          tag_name: v${{ steps.app_version.outputs.version }}-build${{ github.run_number }}
+          name: v${{ steps.app_version.outputs.version }} (Build ${{ github.run_number }})
           target_commitish: ${{ github.sha }}
+          make_latest: true
           body: |
-            Automatically built from commit ${{ github.sha }}.
-            Includes the Authenticode-signed Windows installer ZIP and replaceable HTML interface, plus a signed Android APK for in-app updating and a signed Android App Bundle for Google Play Console, built with the persistent release key.
+            نسخهٔ ${{ steps.app_version.outputs.version }} — ساخته‌شده از کامیت ${{ github.sha }}
+
+            این نسخه بدون امضای کد (code signing) منتشر می‌شود.
+
+            | فایل | توضیح |
+            |---|---|
+            | `PeriodicTableTrainer-windows.zip` | نصب‌کنندهٔ ویندوز + راهنما (بدون امضای Authenticode؛ ممکن است SmartScreen هشدار بدهد) |
+            | `windows_index.html` | رابط ویندوز برای به‌روزرسانی درون‌برنامه‌ای |
+            | `app-debug.apk` | APK اندروید برای نصب جانبی (با کلید debug گریدل امضا شده است) |
+            | `PeriodicTableTrainer-*.aab` | App Bundle بدون امضا، فقط برای نگهداری؛ پیش از بارگذاری در Play Console باید با کلید upload خودتان امضا شود |
+
+            AAB در این workflow به Google Play ارسال نمی‌شود؛ انتشار در Play Console دستی است.
           files: release_assets/*
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false

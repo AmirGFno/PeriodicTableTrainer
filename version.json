@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.1.2",
-  "notes": "نسخهٔ ۱.۱.۲: اصلاح کیبورد آرایش الکترونی برای نمایشگر کوچک (چیدمان موبایلی کلیدها، حفظ مکان‌نما و درج درست کلید گاز نجیب بدون پاک‌کردن ورودی)؛ نمایش پیام خنثی در پایان بازی بدون ثبت پاسخ؛ تایمر ۳۰ ثانیه‌ای برای هر سؤال در مود آرایش الکترونی؛ نمایش مشخصات کامل عنصر پس از ثبت پاسخ در مود دسته‌بندی.",
+  "latest_version": "1.1.3",
+  "notes": "نسخهٔ ۱.۱.۳: حذف کامل امضای کد از فرایند ساخت — نه امضای Authenticode ویندوز و نه امضای keystore اندروید؛ بنابراین هیچ secret یا گواهی‌ای برای build لازم نیست و ساخت دیگر به‌خاطر نبود کلید شکست نمی‌خورد. APK خروجی با کلید debug گریدل نصب‌شدنی است و AAB بدون امضا فقط برای نگهداری منتشر می‌شود. انتشار در GitHub Releases حالا حتی در صورت شکست یک پلتفرم انجام می‌شود و نام آن نسخه را نشان می‌دهد.",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer-windows.zip",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"
