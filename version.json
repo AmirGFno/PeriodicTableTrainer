@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.1.5",
-  "notes": "نسخهٔ ۱.۱.۵: انتقال چهار اصلاح اندروید به نسخهٔ ویندوز و وب. تایمر زمان‌دار در مود آرایش الکترونی ۳۰ ثانیه و در سایر مودها ۱۵ ثانیه شد (برچسب صفحهٔ تنظیمات هم پویا شد)؛ بازی بدون ثبت پاسخ به‌جای «بدون اشتباه» پیام خنثی نشان می‌دهد؛ در مود دسته‌بندی قبل از پاسخ فقط نماد و نام عنصر دیده می‌شود و پس از ثبت پاسخ مشخصات کامل عنصر می‌آید؛ کلیدهای توان (بالانویس) در کیبورد آرایش الکترونی با بالانویس واقعی رندر می‌شوند تا از ارقام عادی قابل تشخیص باشند.",
+  "latest_version": "1.1.6",
+  "notes": "نسخهٔ ۱.۱.۶: اصلاح هر دو آپدیتر. در ویندوز، رابط جدید حالا مستقیم و اتمیک در AppData جایگزین می‌شود و دیگر به اسکریپت خارجی (batch/PowerShell) سپرده نمی‌شود؛ همان اسکریپت باعث می‌شد پنجره بسته شود ولی نسخه عوض نشود. در اندروید، APK و AAB با یک کلید پایدار از GitHub Secrets امضا می‌شوند تا خطای «App not installed as package conflicts with an existing package» رفع شود؛ اگر کلید تنظیم نشده باشد، build با خروجی بدون امضا ادامه می‌دهد و fails نمی‌شود. فایل keystore_clean.txt از مخزن حذف شد.",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer-windows.zip",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"
