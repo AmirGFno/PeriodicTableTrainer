@@ -469,13 +469,13 @@ body.light .ptable-element{color:#172238;text-shadow:none;box-shadow:0 2px 7px #
 <div id="updateBackdrop" class="update-backdrop" role="presentation" aria-hidden="true">
   <section class="update-dialog" role="dialog" aria-modal="true" aria-labelledby="updateTitle">
     <div class="update-head"><h2 id="updateTitle">به‌روزرسانی برنامه</h2><button type="button" id="updateClose" class="update-close" aria-label="بستن">×</button></div>
-    <div class="update-versions"><span>نسخهٔ فعلی: <b id="updateCurrentVersion">۱.۱.۱۴</b></span><span>نسخهٔ جدید: <b id="updateLatestVersion">—</b></span></div>
+    <div class="update-versions"><span>نسخهٔ فعلی: <b id="updateCurrentVersion">۱.۱.۱۵</b></span><span>نسخهٔ جدید: <b id="updateLatestVersion">—</b></span></div>
     <div id="updateNotes" class="update-notes">برای دریافت اطلاعات نسخه، دکمهٔ بررسی را بزنید.</div>
     <div id="updateStatus" class="update-status" role="status" aria-live="polite"></div>
     <div id="updateShellHint" class="update-notes" hidden></div>
     <div id="updateInterface" class="update-notes" style="font-size:11px;opacity:.75;direction:ltr;text-align:left"></div>
     <div id="updateProgress" class="update-progress" hidden><div id="updateProgressFill" class="update-progress-fill"></div></div>
-    <div class="update-actions"><button type="button" id="updateDownload" class="btn primary" hidden>دانلود و نصب</button><button type="button" id="updateInstaller" class="btn subtle" hidden>دریافت نصب‌کنندهٔ جدید</button><button type="button" id="updateCheckAgain" class="btn subtle">بررسی نسخه</button></div>
+    <div class="update-actions"><button type="button" id="updateDownload" class="btn primary" hidden>دانلود و نصب</button><button type="button" id="updateCheckAgain" class="btn subtle">بررسی نسخه</button></div>
   </section>
 </div>
 
@@ -677,21 +677,44 @@ function changeZoom(amount){zoomScale=Math.min(2.8,Math.max(.8,zoomScale+amount)
 function resetZoom(){zoomScale=1;panX=-50;panY=10;applyTransform()}
 function bindTablePan(){const vp=$("tableViewport");vp.addEventListener("pointerdown",e=>{dragStart={x:e.clientX,y:e.clientY,px:panX,py:panY};hasDragged=false});window.addEventListener("pointermove",e=>{if(!dragStart)return;const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;if(Math.abs(dx)+Math.abs(dy)>5){hasDragged=true;vp.classList.add("dragging")}if(hasDragged){panX=dragStart.px+dx;panY=dragStart.py+dy;applyTransform()}});const end=()=>{if(!dragStart)return;dragStart=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,50)};window.addEventListener("pointerup",end);window.addEventListener("pointercancel",end);vp.addEventListener("wheel",e=>{e.preventDefault();changeZoom(e.deltaY<0?.1:-.1)},{passive:false})}
 
-const CURRENT_APP_VERSION="1.1.14";
+const CURRENT_APP_VERSION="1.1.15";
 let updateDownloadRunning=false,shellOutdated=false;
 function openUpdateDialog(){const box=$("updateBackdrop");box.classList.add("open");box.setAttribute("aria-hidden","false");$("updateStatus").textContent="در حال بررسی نسخهٔ جدید...";$("updateDownload").hidden=true;$("updateNotes").textContent="";checkForAppUpdate()}
 function closeUpdateDialog(){if(updateDownloadRunning)return;$("updateBackdrop").classList.remove("open");$("updateBackdrop").setAttribute("aria-hidden","true")}
 function showUpdateProgress(percent,message){updateDownloadRunning=true;$("updateProgress").hidden=false;$("updateProgressFill").style.width=`${Math.max(0,Math.min(100,Number(percent)||0))}%`;$("updateStatus").textContent=Number(percent)>=100?"برنامه برای اعمال تغییرات بسته می‌شود. لطفاً چند لحظه صبر کنید و از بستن پنجره‌های سیاه رنگ خودداری کنید.":(message||"در حال دانلود بروزرسانی... لطفاً برنامه را نبندید");$("updateDownload").disabled=true;$("updateCheckAgain").disabled=true;$("updateClose").disabled=true}
 function finishUpdateProgress(message){updateDownloadRunning=false;$("updateProgressFill").style.width="100%";$("updateStatus").textContent=message||"دانلود کامل شد.";$("updateDownload").disabled=false;$("updateCheckAgain").disabled=false;$("updateClose").disabled=false}
 function showUpdateError(message){updateDownloadRunning=false;$("updateStatus").textContent=message||"به‌روزرسانی انجام نشد. دوباره تلاش کنید.";$("updateDownload").disabled=false;$("updateCheckAgain").disabled=false;$("updateClose").disabled=false}
-function renderUpdateCheck(info){if(!info||info.error){showUpdateError(info?.error||"دریافت اطلاعات نسخه ممکن نشد.");return}$("updateCurrentVersion").textContent=info.current_version||CURRENT_APP_VERSION;$("updateLatestVersion").textContent=info.latest_version||"—";const iface=$("updateInterface");if(iface){const ip=String(info.interface_path||""),iv=String(info.interface_version||""),isrc=String(info.interface_source||"");iface.textContent=ip?`رابط بارگذاری‌شده: ${iv?`نسخهٔ ${iv}`:"نسخه نامشخص"} — ${isrc} — ${ip}`:"";}$("updateNotes").textContent=info.notes||"توضیحی برای این نسخه ثبت نشده است.";const shell=String(info.shell_version||"");const shellOld=!!info.shell_outdated;shellOutdated=shellOld;const hint=$("updateShellHint"),installer=$("updateInstaller");if(shellOld){hint.hidden=false;hint.textContent=`پوستهٔ نصب‌شدهٔ برنامه (EXE) نسخهٔ ${shell} است. به‌روزرسانی داخل برنامه فقط فایل رابط را جایگزین می‌کند، پس نسخهٔ نمایش‌داده‌شده بالاتر نمی‌رود. برای رسیدن به نسخهٔ ${info.latest_version} یک‌بار نصب‌کنندهٔ جدید را اجرا کنید.`;installer.hidden=false}else{hint.hidden=true;hint.textContent="";installer.hidden=true}if(info.available){$("updateStatus").textContent="نسخهٔ جدید آمادهٔ دریافت است.";$("updateDownload").hidden=false}else{$("updateStatus").textContent="برنامه به‌روز است.";$("updateDownload").hidden=true}}
+function renderUpdateCheck(info){if(!info||info.error){showUpdateError(info?.error||"دریافت اطلاعات نسخه ممکن نشد.");return}$("updateCurrentVersion").textContent=info.current_version||CURRENT_APP_VERSION;$("updateLatestVersion").textContent=info.latest_version||"—";const iface=$("updateInterface");if(iface){const ip=String(info.interface_path||""),iv=String(info.interface_version||""),isrc=String(info.interface_source||"");iface.textContent=ip?`رابط بارگذاری‌شده: ${iv?`نسخهٔ ${iv}`:"نسخه نامشخص"} — ${isrc} — ${ip}`:"";}$("updateNotes").textContent=info.notes||"توضیحی برای این نسخه ثبت نشده است.";const shell=String(info.shell_version||"");const shellOld=!!info.shell_outdated;shellOutdated=shellOld;const hint=$("updateShellHint");if(shellOld){hint.hidden=false;hint.textContent=`پوستهٔ نصب‌شدهٔ برنامه (EXE) نسخهٔ ${shell} است؛ دکمهٔ «دانلود و نصب» خودش نسخهٔ ${info.latest_version} را کامل دریافت و نصب می‌کند.`}else{hint.hidden=true;hint.textContent=""}if(info.available){$("updateStatus").textContent="نسخهٔ جدید آمادهٔ دریافت است.";$("updateDownload").hidden=false}else{$("updateStatus").textContent="برنامه به‌روز است.";$("updateDownload").hidden=true}}
 async function checkForAppUpdate(){try{let info;if(window.pywebview?.api?.check_update){info=await window.pywebview.api.check_update()}else{const response=await fetch("/api/version",{cache:"no-store"});info=await response.json()}renderUpdateCheck(info)}catch(error){showUpdateError("بررسی نسخه انجام نشد؛ اتصال اینترنت و نشانی version.json را بررسی کنید.")}}
-async function requestAppUpdate(){if(updateDownloadRunning)return;showUpdateProgress(0,"در حال دانلود بروزرسانی... لطفاً برنامه را نبندید");try{let result;const api=window.pywebview?.api;if(api?.update_full_app&&shellOutdated){result=await api.update_full_app()}else if(api?.update_windows){result=await api.update_windows()}else{const response=await fetch("/api/update",{method:"POST"});result=await response.json()}if(!result?.ok)showUpdateError(result?.error||"شروع دانلود به‌روزرسانی ممکن نشد.")}catch(error){showUpdateError("شروع دانلود ناموفق بود؛ دوباره تلاش کنید.")}}
+async function requestAppUpdate(){if(updateDownloadRunning)return;
+ const api=window.pywebview?.api;
+ showUpdateProgress(2,"در حال آماده‌سازی به‌روزرسانی... لطفاً برنامه را نبندید");
+ try{
+  let result;
+  if(api?.update_full_app&&shellOutdated){
+   showUpdateProgress(6,"نسخهٔ کامل برنامه در حال دریافت و نصب است...");
+   result=await api.update_full_app();
+  }else if(api?.update_windows){
+   result=await api.update_windows();
+   if(!result?.ok&&api?.update_full_app){
+    showUpdateProgress(6,"به‌روزرسانی رابط ممکن نشد؛ نسخهٔ کامل نصب می‌شود...");
+    result=await api.update_full_app();
+   }
+  }else{
+   const response=await fetch("/api/update",{method:"POST"});
+   result=await response.json();
+  }
+  if(!result?.ok)showUpdateError(result?.error||"به‌روزرسانی انجام نشد؛ دوباره تلاش کنید.");
+ }catch(error){
+  try{if(api?.update_full_app){const fallback=await api.update_full_app();if(fallback?.ok)return}}catch(_){}
+  showUpdateError("شروع به‌روزرسانی ناموفق بود؛ دوباره تلاش کنید.");
+ }
+}
 window.setUpdateProgress=showUpdateProgress;
 window.finishUpdateProgress=finishUpdateProgress;
 window.showUpdateError=showUpdateError;
 
-function bindUI(){$("updateCheckButton").addEventListener("click",openUpdateDialog);$("updateDownload").addEventListener("click",requestAppUpdate);$("updateInstaller").addEventListener("click",async()=>{try{const api=window.pywebview?.api;if(api?.update_full_app){showUpdateProgress(0,"در حال دریافت نسخهٔ کامل برنامه...");const r=await api.update_full_app();if(!r?.ok)showUpdateError(r?.error||"دریافت نسخهٔ جدید ناموفق بود.");return}if(api?.open_download_page){const r=await api.open_download_page();if(!r?.ok)showUpdateError(r?.error||"بازکردن صفحهٔ دانلود ناموفق بود.")}else{window.open("https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest","_blank")}}catch(error){showUpdateError("بازکردن صفحهٔ دانلود ناموفق بود.")}});$("updateCheckAgain").addEventListener("click",checkForAppUpdate);$("updateClose").addEventListener("click",closeUpdateDialog);$("updateBackdrop").addEventListener("click",e=>{if(e.target===$("updateBackdrop"))closeUpdateDialog()});document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>showScreen(b.dataset.page)));$("themeToggle").addEventListener("change",e=>{if(themeSwitchTimer)clearTimeout(themeSwitchTimer);const nextTheme=e.target.checked?"dark":"light";themeSwitchTimer=setTimeout(()=>{themeSwitchTimer=null;setTheme(nextTheme)},250)});$("timerToggle").addEventListener("change",e=>{data.timerEnabled=e.target.checked;persist()});$("startMode").addEventListener("click",()=>{data.timerEnabled=$("timerToggle").checked;if(currentMode==="electron_config"){electronConfigStyle=$("configStyle").value;data.electronConfigStyle=electronConfigStyle}persist();startGame(currentMode,$("askState").checked)});$("setupBack").addEventListener("click",()=>showScreen("menu"));$("submitAnswer").addEventListener("click",submit);$("endGame").type="button";$("endGame").onclick=finishGameNow;$("hintBtn").addEventListener("click",useHint);$("replay").addEventListener("click",()=>startGame(currentMode,askState));$("toMenu").addEventListener("click",()=>showScreen("menu"));$("zoomIn").addEventListener("click",()=>changeZoom(.15));$("zoomOut").addEventListener("click",()=>changeZoom(-.15));$("zoomReset").addEventListener("click",resetZoom);$("tableSearch").addEventListener("input",applyTableFilters);document.querySelectorAll(".legend-filter").forEach(button=>button.addEventListener("click",()=>{activeTableCategory=activeTableCategory===button.dataset.filter?null:button.dataset.filter;applyTableFilters()}));$("modalClose").addEventListener("click",closeModal);$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal()});document.addEventListener("keydown",e=>{if(e.key==="Enter"&&$("game").classList.contains("active")){if(e.target.closest&&e.target.closest("button"))return;e.preventDefault();submit()}if(e.key==="Escape")closeModal()});bindTablePan()}
+function bindUI(){$("updateCheckButton").addEventListener("click",openUpdateDialog);$("updateDownload").addEventListener("click",requestAppUpdate);$("updateCheckAgain").addEventListener("click",checkForAppUpdate);$("updateClose").addEventListener("click",closeUpdateDialog);$("updateBackdrop").addEventListener("click",e=>{if(e.target===$("updateBackdrop"))closeUpdateDialog()});document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>showScreen(b.dataset.page)));$("themeToggle").addEventListener("change",e=>{if(themeSwitchTimer)clearTimeout(themeSwitchTimer);const nextTheme=e.target.checked?"dark":"light";themeSwitchTimer=setTimeout(()=>{themeSwitchTimer=null;setTheme(nextTheme)},250)});$("timerToggle").addEventListener("change",e=>{data.timerEnabled=e.target.checked;persist()});$("startMode").addEventListener("click",()=>{data.timerEnabled=$("timerToggle").checked;if(currentMode==="electron_config"){electronConfigStyle=$("configStyle").value;data.electronConfigStyle=electronConfigStyle}persist();startGame(currentMode,$("askState").checked)});$("setupBack").addEventListener("click",()=>showScreen("menu"));$("submitAnswer").addEventListener("click",submit);$("endGame").type="button";$("endGame").onclick=finishGameNow;$("hintBtn").addEventListener("click",useHint);$("replay").addEventListener("click",()=>startGame(currentMode,askState));$("toMenu").addEventListener("click",()=>showScreen("menu"));$("zoomIn").addEventListener("click",()=>changeZoom(.15));$("zoomOut").addEventListener("click",()=>changeZoom(-.15));$("zoomReset").addEventListener("click",resetZoom);$("tableSearch").addEventListener("input",applyTableFilters);document.querySelectorAll(".legend-filter").forEach(button=>button.addEventListener("click",()=>{activeTableCategory=activeTableCategory===button.dataset.filter?null:button.dataset.filter;applyTableFilters()}));$("modalClose").addEventListener("click",closeModal);$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal()});document.addEventListener("keydown",e=>{if(e.key==="Enter"&&$("game").classList.contains("active")){if(e.target.closest&&e.target.closest("button"))return;e.preventDefault();submit()}if(e.key==="Escape")closeModal()});bindTablePan()}
 tryWindowsBackupRestore();
 </script>
 
@@ -863,29 +886,36 @@ tryWindowsBackupRestore();
 </script>
 
 <style>
-/* ===== 1.1.14 layout fixes ===== */
-/* top bar: one clean three-zone row (title | navigation | theme) */
-@media (min-width:761px){
-  .topbar{position:sticky;top:0;z-index:70;display:grid;grid-template-columns:auto 1fr auto;
-    align-items:center;gap:18px;padding:12px 22px}
-  .brand{order:1;justify-self:start;text-align:start;flex:none;width:auto;
-    font-size:clamp(17px,1.55vw,22px);line-height:1.5}
-  .toolbar{order:2;justify-self:center;width:auto;flex:none;margin:0;flex-wrap:nowrap;
-    gap:8px;direction:rtl;padding:0;background:none;border:0}
-  .theme-toggle-area{order:3;justify-self:end;margin:0;padding:0;border:0;height:auto}
+/* ===== layout fixes ===== */
+/* top bar: override the old `.topbar>.toolbar` rules with the same specificity,
+   declared later, so the three zones really apply. */
+@media (min-width:721px){
+  .topbar{display:grid;grid-template-columns:auto 1fr auto;direction:rtl;align-items:center;
+    gap:18px;padding:12px 22px;position:sticky;top:0;z-index:70}
+  .topbar>.brand{order:1;justify-self:start;text-align:start;flex:none;width:auto;
+    white-space:nowrap;font-size:clamp(17px,1.55vw,22px)}
+  .topbar>.toolbar{order:2;justify-self:center;margin:0;width:auto;flex:none;flex-wrap:nowrap;
+    justify-content:center;direction:rtl;gap:8px;padding:0;background:none;border:0}
+  .topbar>.theme-toggle-area{order:3;justify-self:end;margin:0;padding:0;border:0;height:auto}
 }
-/* menu: a single centred column — title, then the element panel, then the modes */
-#menu{display:flex;flex-direction:column;align-items:center;gap:20px}
-#menu>.hero{order:0;width:100%;max-width:760px;text-align:center;margin:0 auto}
+/* main menu: independent view, and only while it is the active screen */
+#menu.active{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;align-items:start}
+#menu>.hero{grid-column:1/-1;grid-row:1;justify-self:center;text-align:center;
+  width:100%;max-width:820px;margin:0 auto 6px}
 #menu>.hero h1{margin-bottom:8px}
 #menu>.hero p{margin:0 auto;max-width:620px}
-.ptt-spot{order:1;position:static;width:min(100%,430px);margin:0 auto;grid-column:auto;grid-row:auto;
-  text-align:center}
-.ptt-spot #pttSpotBody .cfg{margin-inline:auto;max-width:100%}
-#menu>.mode-grid{order:2;width:100%;justify-content:center;justify-items:stretch}
-#menu>.mode-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));max-width:1020px;margin-inline:auto}
-#menu>.home-credit{order:3;width:100%;text-align:center;margin-top:4px}
-@media (max-width:879px){.ptt-spot{display:block}}
+#menu>.mode-grid{grid-column:1;grid-row:2;width:100%;justify-items:stretch;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+#menu>.home-credit{grid-column:1/-1;grid-row:3;text-align:center;margin-top:6px}
+.ptt-spot{grid-column:2;grid-row:2;position:static;width:100%;margin:0;text-align:center;
+  padding:16px;border-radius:18px}
+.ptt-spot #pttSpotBody .sym{font-size:44px}
+.ptt-spot #pttSpotBody .cfg{max-width:100%;margin-inline:auto}
+@media (max-width:979px){
+  #menu.active{grid-template-columns:minmax(0,1fr)}
+  .ptt-spot{grid-column:1;grid-row:3;width:min(100%,360px);justify-self:center}
+  #menu>.home-credit{grid-row:4}
+}
 </style>
 <script>
 ;(function(){
