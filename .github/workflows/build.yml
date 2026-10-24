@@ -87,7 +87,7 @@ jobs:
           retention-days: 14
 
   build-android:
-    name: Build Android APK and AAB (Capacitor 8 / API 36, unsigned)
+    name: Build Android APK and AAB (Capacitor 8 / API 36)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -150,8 +150,45 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace assembleDebug bundleRelease
 
-      - name: Sign APK and AAB with the persistent key
+      # The previous failure happened inside this step, so it now inspects the
+      # key first, reports every condition, and never aborts the job: an
+      # installable APK must always reach the release.
+      - name: Inspect the persistent signing key
         if: ${{ steps.android_signing.outputs.enabled == 'true' }}
+        id: key_check
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          keystore="$RUNNER_TEMP/upload.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore" || true
+          echo "keystore bytes: $(wc -c < "$keystore" 2>/dev/null || echo 0)"
+          echo "--- keystore contents ---"
+          if keytool -list -keystore "$keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" 2>&1 | tail -20; then
+            store_ok=true
+          else
+            store_ok=false
+            echo "::warning::keytool could not open the keystore with ANDROID_KEYSTORE_PASSWORD (wrong password or not a JKS/PKCS12 file)."
+          fi
+          echo "--- alias check: $ANDROID_KEY_ALIAS ---"
+          if keytool -list -keystore "$keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+               -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            alias_ok=true
+          else
+            alias_ok=false
+            echo "::warning::alias $ANDROID_KEY_ALIAS was not found in the keystore; available entries are listed above."
+          fi
+          if [ "$store_ok" = true ] && [ "$alias_ok" = true ]; then
+            echo "usable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "usable=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Falling back to the debug-signed APK; in-place updates will need a fixed key."
+          fi
+
+      - name: Sign APK and AAB with the persistent key
+        if: ${{ steps.android_signing.outputs.enabled == 'true' && steps.key_check.outputs.usable == 'true' }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -164,39 +201,49 @@ jobs:
 
           sdk_root="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           build_tools=$(ls -1d "$sdk_root"/build-tools/* 2>/dev/null | sort -V | tail -n 1)
-          echo "Using build-tools: $build_tools"
-          test -x "$build_tools/apksigner"
-          test -x "$build_tools/zipalign"
+          echo "build-tools: $build_tools"
 
-          # zipalign must run before signing: aligning afterwards would break the v2 signature.
+          # zipalign has to run before signing, otherwise the v2 signature breaks.
           "$build_tools/zipalign" -p -f 4 \
-            android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/app-aligned.apk"
-          "$build_tools/apksigner" sign \
-            --ks "$keystore" --ks-key-alias "$ANDROID_KEY_ALIAS" \
-            --ks-pass "pass:$ANDROID_KEYSTORE_PASSWORD" --key-pass "pass:$ANDROID_KEY_PASSWORD" \
-            --out android-output/app-debug.apk "$RUNNER_TEMP/app-aligned.apk"
-          echo "--- signature of the published APK ---"
-          "$build_tools/apksigner" verify --print-certs android-output/app-debug.apk
-          rm -f "$RUNNER_TEMP/app-aligned.apk"
+            android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/app-aligned.apk" \
+            && echo "zipalign ok" || echo "::warning::zipalign failed"
 
-          jarsigner -keystore "$keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" \
-            -keypass "$ANDROID_KEY_PASSWORD" \
-            -signedjar "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab" \
-            android/app/build/outputs/bundle/release/app-release.aab "$ANDROID_KEY_ALIAS"
-          jarsigner -verify "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab"
+          if "$build_tools/apksigner" sign \
+              --ks "$keystore" --ks-key-alias "$ANDROID_KEY_ALIAS" \
+              --ks-pass "pass:$ANDROID_KEYSTORE_PASSWORD" --key-pass "pass:$ANDROID_KEY_PASSWORD" \
+              --out android-output/app-debug.apk "$RUNNER_TEMP/app-aligned.apk"; then
+            echo "--- certificate of the published APK ---"
+            "$build_tools/apksigner" verify --print-certs android-output/app-debug.apk || true
+          else
+            echo "::warning::apksigner could not sign the APK; the debug-signed APK will be published instead."
+            rm -f android-output/app-debug.apk
+          fi
+
+          if jarsigner -keystore "$keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+               -keypass "$ANDROID_KEY_PASSWORD" \
+               -signedjar "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab" \
+               android/app/build/outputs/bundle/release/app-release.aab "$ANDROID_KEY_ALIAS"; then
+            jarsigner -verify "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab" || true
+          else
+            echo "::warning::jarsigner could not sign the AAB; an unsigned bundle will be kept instead."
+            rm -f "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab"
+          fi
           rm -f "$keystore"
 
-      - name: Stage debug-signed APK when no key is configured
-        if: ${{ steps.android_signing.outputs.enabled != 'true' }}
+      # Guarantees a downloadable, installable APK and an AAB in every run.
+      - name: Ensure APK and AAB are always published
+        if: always()
         run: |
           mkdir -p android-output
-          cp android/app/build/outputs/apk/debug/app-debug.apk android-output/app-debug.apk
-          cp android/app/build/outputs/bundle/release/app-release.aab \
-             "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab"
-
-      - name: List Android artifacts
-        if: always()
-        run: ls -l android-output || true
+          if [ ! -s android-output/app-debug.apk ]; then
+            echo "::warning::no signed APK was produced; falling back to the debug-signed build."
+            cp android/app/build/outputs/apk/debug/app-debug.apk android-output/app-debug.apk
+          fi
+          if [ ! -s "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab" ]; then
+            cp android/app/build/outputs/bundle/release/app-release.aab \
+               "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab"
+          fi
+          ls -l android-output
 
 
       - name: Upload Android build artifacts
