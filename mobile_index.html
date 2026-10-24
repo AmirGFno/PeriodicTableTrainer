@@ -17,7 +17,130 @@
   --mode-name-a:#b59be0; --mode-name-b:#9282ca;
   --mode-category-a:#e4a06b; --mode-category-b:#c87b50;
   --mode-electron-a:#75c8bd; --mode-electron-b:#69a5ca;
-}</style>
+}
+/* ================= PTT UI 2.0 — glass design layer ================= */
+:root{
+  --ui-r:18px; --ui-r-sm:13px;
+  --g1:#1769bd; --g2:#2f9ec4; --g3:#7a6cf0;
+  --glass:rgba(255,255,255,.62);
+  --glass-2:rgba(255,255,255,.82);
+  --glass-line:rgba(255,255,255,.72);
+  --glass-shadow:0 22px 50px -26px rgba(17,38,74,.45);
+  --ring:0 0 0 3px rgba(23,105,189,.30);
+  --sheen:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.55) 50%,transparent 68%);
+  --hi:rgba(255,255,255,.55);
+}
+body:not(.light){
+  --glass:rgba(16,25,42,.60);
+  --glass-2:rgba(20,30,50,.84);
+  --glass-line:rgba(255,255,255,.10);
+  --glass-shadow:0 26px 62px -28px rgba(0,0,0,.9);
+  --ring:0 0 0 3px rgba(101,173,255,.38);
+  --sheen:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.16) 50%,transparent 68%);
+  --hi:rgba(255,255,255,.10);
+}
+body{position:relative;min-height:100vh}
+body::before{
+  content:"";position:fixed;inset:-12%;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(42rem 30rem at 88% -8%,rgba(47,158,196,.22),transparent 62%),
+    radial-gradient(38rem 26rem at 4% 4%,rgba(122,108,240,.18),transparent 60%),
+    radial-gradient(46rem 32rem at 50% 112%,rgba(23,105,189,.16),transparent 64%);
+  animation:ptt-drift 28s ease-in-out infinite alternate;
+}
+@keyframes ptt-drift{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-1.6%,1.4%,0) scale(1.05)}}
+
+/* glass surfaces */
+.topbar,.panel,.setup-card,.legend,.question-stage>.element-cell,.update-dialog,.modal-card,.mastery-list,.mistakes-list,.stats-grid>*{
+  backdrop-filter:blur(16px) saturate(150%);
+  -webkit-backdrop-filter:blur(16px) saturate(150%);
+  background:var(--glass);
+  border:1px solid var(--glass-line);
+  box-shadow:var(--glass-shadow);
+}
+.topbar{border-radius:0 0 18px 18px}
+.panel,.setup-card{border-radius:var(--ui-r)}
+
+/* buttons */
+.btn{position:relative;overflow:hidden;border-radius:14px;font-weight:800;letter-spacing:.1px;
+  transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .22s,filter .22s}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(1px) scale(.996)}
+.btn.primary{background:linear-gradient(135deg,var(--g1),var(--g2));color:#fff;border-color:transparent;
+  box-shadow:0 14px 28px -14px rgba(23,105,189,.8)}
+.btn.primary:hover{filter:brightness(1.07);box-shadow:0 18px 34px -14px rgba(23,105,189,.9)}
+.btn.primary::after{content:"";position:absolute;inset:0;background:var(--sheen);transform:translateX(-130%);transition:transform .65s ease;pointer-events:none}
+.btn.primary:hover::after{transform:translateX(130%)}
+.btn.subtle{background:var(--glass-2);border:1px solid var(--glass-line)}
+.btn.danger{background:linear-gradient(135deg,#c2413a,#e0645c)}
+
+/* generic focus ring */
+:where(button,a[href],input,select,textarea,[tabindex]):focus-visible{outline:none;box-shadow:var(--ring)}
+
+/* ripples */
+.ptt-ripple{position:absolute;border-radius:50%;background:currentColor;opacity:.22;transform:scale(0);
+  animation:ptt-ripple .62s ease-out forwards;pointer-events:none}
+@keyframes ptt-ripple{to{transform:scale(2.4);opacity:0}}
+
+/* screens */
+.screen.active{animation:ptt-rise .36s cubic-bezier(.2,.85,.25,1) both}
+@keyframes ptt-rise{from{opacity:0;transform:translateY(12px) scale(.994)}to{opacity:1;transform:none}}
+
+/* mode cards */
+.mode-card{position:relative;overflow:hidden;isolation:isolate}
+.mode-card::after{content:"";position:absolute;inset:0;background:var(--sheen);transform:translateX(-130%);
+  transition:transform .7s ease;pointer-events:none;z-index:1}
+.mode-card:hover{transform:translateY(-5px) scale(1.012);filter:brightness(1.05);box-shadow:0 22px 40px -20px rgba(17,38,74,.55)}
+.mode-card:hover::after{transform:translateX(130%)}
+
+/* periodic table tiles */
+.ptable-element{transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .18s,filter .18s}
+.ptable-element:hover{transform:translateY(-3px) scale(1.05);z-index:4;filter:saturate(1.12);
+  box-shadow:0 16px 28px -14px rgba(17,38,74,.55)}
+.ptable-element:focus-visible{outline:none;box-shadow:var(--ring)}
+
+/* element card sheen */
+.element-cell{position:relative;overflow:hidden}
+.element-cell::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 78% at 50% -12%,rgba(255,255,255,.28),transparent 62%)}
+
+/* feedback motion */
+.feedback.good{animation:ptt-good .5s ease}
+.feedback.bad{animation:ptt-shake .42s cubic-bezier(.36,.07,.19,.97)}
+@keyframes ptt-good{0%{transform:scale(.96)}60%{transform:scale(1.02)}100%{transform:none}}
+@keyframes ptt-shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(3px)}
+  30%,50%,70%{transform:translateX(-5px)}40%,60%{transform:translateX(5px)}}
+
+/* particle burst */
+.ptt-burst-layer{position:fixed;inset:0;pointer-events:none;z-index:9998}
+.ptt-bit{position:absolute;width:7px;height:7px;border-radius:2px;opacity:0;
+  animation:ptt-bit .85s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes ptt-bit{0%{opacity:1;transform:translate(-50%,-50%) scale(.6)}
+  100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1) rotate(140deg)}}
+
+/* toast + scrollbars */
+.toast{border-radius:14px;box-shadow:var(--glass-shadow);backdrop-filter:blur(14px)}
+*{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--accent) 45%,transparent) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--accent) 40%,transparent);border-radius:99px}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+
+/* ===== Android exclusives ===== */
+.topbar{padding-top:calc(10px + env(safe-area-inset-top,0px))}
+.app{padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+.btn,.nav-btn,.state-option,.icon-btn,.mode-card{min-height:44px}
+.btn:active,.nav-btn:active,.state-option:active{transform:scale(.975)}
+@media (max-width:720px){
+  .panel,.setup-card{border-radius:20px}
+  .mode-card{min-height:132px}
+  .topbar{border-radius:0 0 22px 22px}
+}
+
+</style>
 <title>آزمایشگاه جدول تناوبی</title>
 <style>
 /* BEGIN EMBEDDED OFFLINE FONTS */
@@ -176,7 +299,7 @@ body.light .mode-card .record-line{border-top-color:#17223830}
 .tile-input{border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text);width:100%;text-align:center;outline:none;padding:6px 10px}.tile-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}.tile-input.num{height:32px;font-size:16px}.tile-input.sym{height:55px;font-size:26px;font-weight:800}.blank{height:27px}
 .feedback{min-height:37px;text-align:center;color:var(--muted);line-height:1.8;padding:3px}.feedback.good{color:var(--good)}.feedback.bad{color:var(--bad)}
 .game-controls{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin:5px 0 0}.game-controls .btn{min-width:155px}.hint-box{margin:8px auto 0;text-align:center;color:var(--gold);font-size:13px;min-height:23px}
-.state-options{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;width:min(100%,650px);margin:7px auto}.state-option{background:var(--surface2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 4px;min-height:41px}.state-option.selected{background:var(--accent);color:#071426}.state-option:disabled{opacity:.6}
+.state-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:7px;width:min(100%,650px);margin:7px auto;justify-content:center}.state-option{background:var(--surface2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 4px;min-height:41px}.state-option.selected{background:var(--accent);color:#071426}.state-option:disabled{opacity:.6}
 .category-colors{--cell-c:var(--cat-metal)}.cat-alkali-metal,.cat-alkaline-earth-metal,.cat-transition-metal,.cat-post-transition-metal,.cat-lanthanide,.cat-actinide,.cat-metal{--cell-c:var(--cat-metal)}.cat-metalloid{--cell-c:var(--cat-metalloid)}.cat-nonmetal,.cat-diatomic-nonmetal,.cat-polyatomic-nonmetal{--cell-c:var(--cat-nonmetal)}.cat-noble-gas{--cell-c:var(--cat-noble)}.cat-halogen{--cell-c:var(--cat-halogen)}.cat-unknown{--cell-c:var(--cat-unknown)}
 .table-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}.table-tools input{flex:1;min-width:190px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text);padding:10px}.zoom-label{color:var(--muted);min-width:58px;text-align:center}.ptable-viewport{height:min(68vh,690px);min-height:430px;overflow:hidden;border:1px solid var(--line);border-radius:15px;background:var(--surface);cursor:grab;touch-action:none;position:relative}.ptable-viewport.dragging{cursor:grabbing}.ptable-grid{width:1200px;display:grid;grid-template-columns:repeat(18,62px);grid-auto-rows:77px;gap:3px;transform-origin:0 0;will-change:transform;padding:8px;position:absolute;top:0;left:0;direction:ltr}
 .group-label{grid-row:1;display:grid;place-items:center;color:var(--muted);font-size:11px;font-weight:700;opacity:.86}
@@ -592,7 +715,7 @@ body.drawer-open{overflow:hidden}
   <section class="drawer-about" aria-labelledby="drawerAboutTitle">
     <h3 id="drawerAboutTitle">درباره برنامه</h3>
     <p>آزمایشگاه جدول تناوبی</p>
-    <p>نسخهٔ فعلی: <b id="aboutVersion">1.1.10</b></p>
+    <p>نسخهٔ فعلی: <b id="aboutVersion">1.1.11</b></p>
     <p>سازنده: <b>Amir GFno</b></p>
   </section>
 </aside>
@@ -613,7 +736,7 @@ body.drawer-open{overflow:hidden}
 <div id="updateBackdrop" class="update-backdrop" role="presentation" aria-hidden="true">
   <section class="update-dialog" role="dialog" aria-modal="true" aria-labelledby="updateTitle">
     <div class="update-head"><h2 id="updateTitle">به‌روزرسانی برنامه</h2><button type="button" id="updateClose" class="update-close" aria-label="بستن">×</button></div>
-    <div class="update-versions"><span>نسخهٔ فعلی: <b id="updateCurrentVersion">۱.۱.۱۰</b></span><span>نسخهٔ جدید: <b id="updateLatestVersion">—</b></span></div>
+    <div class="update-versions"><span>نسخهٔ فعلی: <b id="updateCurrentVersion">۱.۱.۱۱</b></span><span>نسخهٔ جدید: <b id="updateLatestVersion">—</b></span></div>
     <div id="updateNotes" class="update-notes">برای دریافت اطلاعات نسخه، دکمهٔ بررسی را بزنید.</div>
     <div id="updateStatus" class="update-status" role="status" aria-live="polite"></div>
     <div id="updateProgress" class="update-progress" hidden><div id="updateProgressFill" class="update-progress-fill"></div></div>
@@ -827,7 +950,7 @@ function beginTouchPan(touch,rect,preserveDrag=false){const point=tablePoint(tou
 function beginTouchPinch(touches,rect){const mid={x:(touches[0].clientX+touches[1].clientX)/2-rect.left,y:(touches[0].clientY+touches[1].clientY)/2-rect.top};touchGesture={type:"pinch",distance:Math.max(1,touchDistance(touches[0],touches[1])),zoom:zoomScale,contentX:(mid.x-panX)/zoomScale,contentY:(mid.y-panY)/zoomScale};hasDragged=true}
 function bindTablePan(){const vp=$("tableViewport");vp.addEventListener("pointerdown",e=>{if(e.pointerType==="touch")return;dragStart={x:e.clientX,y:e.clientY,px:panX,py:panY,pointerId:e.pointerId};hasDragged=false});window.addEventListener("pointermove",e=>{if(e.pointerType==="touch"||!dragStart)return;const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;if(Math.abs(dx)+Math.abs(dy)>5){hasDragged=true;vp.classList.add("dragging")}if(hasDragged){panX=dragStart.px+dx;panY=dragStart.py+dy;applyTransform()}});const endPointer=()=>{if(!dragStart)return;dragStart=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,70)};window.addEventListener("pointerup",endPointer);window.addEventListener("pointercancel",endPointer);vp.addEventListener("wheel",e=>{e.preventDefault();changeZoom(e.deltaY<0?.1:-.1)},{passive:false});vp.addEventListener("touchstart",e=>{if(!e.touches.length)return;const rect=vp.getBoundingClientRect();if(e.touches.length>=2)beginTouchPinch(e.touches,rect);else beginTouchPan(e.touches[0],rect)},{passive:false});vp.addEventListener("touchmove",e=>{if(!touchGesture)return;e.preventDefault();const rect=vp.getBoundingClientRect();if(e.touches.length>=2){if(touchGesture.type!=="pinch")beginTouchPinch(e.touches,rect);const mid={x:(e.touches[0].clientX+e.touches[1].clientX)/2-rect.left,y:(e.touches[0].clientY+e.touches[1].clientY)/2-rect.top};const distance=Math.max(1,touchDistance(e.touches[0],e.touches[1]));zoomScale=Math.min(2.8,Math.max(MIN_TABLE_ZOOM,touchGesture.zoom*distance/touchGesture.distance));panX=mid.x-touchGesture.contentX*zoomScale;panY=mid.y-touchGesture.contentY*zoomScale;tableUserZoomed=true;tableFitInitialized=true;hasDragged=true;applyTransform()}else if(e.touches.length===1){if(touchGesture.type!=="pan")beginTouchPan(e.touches[0],rect,touchGesture.type==="pinch");const point=tablePoint(e.touches[0],rect),dx=point.x-touchGesture.x,dy=point.y-touchGesture.y;if(Math.abs(dx)+Math.abs(dy)>5)hasDragged=true;if(hasDragged){panX=touchGesture.px+dx;panY=touchGesture.py+dy;applyTransform()}}},{passive:false});vp.addEventListener("touchend",e=>{const rect=vp.getBoundingClientRect();if(e.touches.length===1){beginTouchPan(e.touches[0],rect,touchGesture?.type==="pinch");return}if(e.touches.length>=2){beginTouchPinch(e.touches,rect);return}touchGesture=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,70)});vp.addEventListener("touchcancel",()=>{touchGesture=null;vp.classList.remove("dragging");setTimeout(()=>hasDragged=false,70)});window.addEventListener("resize",()=>{if($("table")?.classList.contains("active")){if(!tableUserZoomed)fitTableToWidth();else applyTransform()}})}
 
-const CURRENT_APP_VERSION="1.1.10";
+const CURRENT_APP_VERSION="1.1.11";
 let updateDownloadRunning=false,pendingAndroidUrl="";
 function openUpdateDialog(){const box=$("updateBackdrop");box.classList.add("open");box.setAttribute("aria-hidden","false");$("updateStatus").textContent="در حال بررسی نسخهٔ جدید...";$("updateDownload").hidden=true;$("updateNotes").textContent="";checkForAppUpdate()}
 function closeUpdateDialog(){if(updateDownloadRunning)return;$("updateBackdrop").classList.remove("open");$("updateBackdrop").setAttribute("aria-hidden","true")}
@@ -845,5 +968,59 @@ function bindCapacitorUpdateEvents(){const native=window.Capacitor?.Plugins?.Per
 function bindUI(){bindCapacitorUpdateEvents();$("updateCheckButton").addEventListener("click",()=>{closeSideDrawer();openUpdateDialog()});$("drawerToggle").addEventListener("click",openSideDrawer);$("closeSideDrawer").addEventListener("click",()=>closeSideDrawer());$("drawerBackdrop").addEventListener("click",()=>closeSideDrawer());$("resetDataButton").addEventListener("click",openResetDataDialog);$("cancelResetData").addEventListener("click",closeResetDataDialog);$("confirmResetData").addEventListener("click",resetProgressData);$("resetConfirmBackdrop").addEventListener("click",e=>{if(e.target===$("resetConfirmBackdrop"))closeResetDataDialog()});$("updateDownload").addEventListener("click",requestAppUpdate);$("updateCheckAgain").addEventListener("click",checkForAppUpdate);$("updateClose").addEventListener("click",closeUpdateDialog);$("updateBackdrop").addEventListener("click",e=>{if(e.target===$("updateBackdrop"))closeUpdateDialog()});document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>{showScreen(b.dataset.page);if(b.closest("#sideDrawer"))closeSideDrawer(false)}));$("headerBack").addEventListener("click",()=>showScreen("menu"));$("themeToggleButton").addEventListener("click",()=>setTheme(data.theme==="dark"?"light":"dark"));$("timerToggle").addEventListener("change",e=>{data.timerEnabled=e.target.checked;persist()});$("startMode").addEventListener("click",()=>{data.timerEnabled=$("timerToggle").checked;if(currentMode==="electron_config"){electronConfigStyle=$("configStyle").value;data.electronConfigStyle=electronConfigStyle}persist();startGame(currentMode,$("askState").checked)});$("setupBack").addEventListener("click",()=>showScreen("menu"));$("submitAnswer").addEventListener("click",submit);$("endGame").type="button";$("endGame").onclick=finishGameNow;$("hintBtn").addEventListener("click",useHint);$("replay").addEventListener("click",()=>startGame(currentMode,askState));$("toMenu").addEventListener("click",()=>showScreen("menu"));$("zoomIn").addEventListener("click",()=>changeZoom(.15));$("zoomOut").addEventListener("click",()=>changeZoom(-.15));$("zoomReset").addEventListener("click",resetZoom);$("tableSearch").addEventListener("input",applyTableFilters);document.querySelectorAll(".legend-filter").forEach(button=>button.addEventListener("click",()=>{activeTableCategory=activeTableCategory===button.dataset.filter?null:button.dataset.filter;applyTableFilters()}));$("modalClose").addEventListener("click",closeModal);$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal()});document.addEventListener("keydown",e=>{if(e.key==="Enter"&&$("game").classList.contains("active")){if(e.target.closest&&e.target.closest("button"))return;e.preventDefault();submit()}if(e.key==="Escape"){if($("resetConfirmBackdrop").classList.contains("open"))closeResetDataDialog();else if($("sideDrawer").classList.contains("open"))closeSideDrawer();else closeModal()}});bindTablePan()}
 bootstrapMobileApp();
 </script>
+
+<script>
+
+;(function(){
+  if(window.__pttUI)return; window.__pttUI=1;
+  var d=document;
+  /* ripple */
+  d.addEventListener("pointerdown",function(e){
+    var b=e.target.closest(".btn,.nav-btn,.icon-btn,.state-option,.mode-card,.ptable-element");
+    if(!b||b.disabled)return;
+    var r=d.createElement("i");r.className="ptt-ripple";
+    var q=b.getBoundingClientRect(),s=Math.max(q.width,q.height);
+    r.style.width=r.style.height=s+"px";
+    r.style.left=(e.clientX-q.left-s/2)+"px";
+    r.style.top=(e.clientY-q.top-s/2)+"px";
+    b.appendChild(r);setTimeout(function(){r.remove()},700);
+  },{passive:true});
+  /* particle burst on a correct answer */
+  var layer=d.createElement("div");layer.className="ptt-burst-layer";d.body.appendChild(layer);
+  function burst(){
+    for(var i=0;i<20;i++){
+      var p=d.createElement("span");p.className="ptt-bit";
+      var a=Math.random()*Math.PI*2,dist=55+Math.random()*110;
+      p.style.setProperty("--dx",(Math.cos(a)*dist).toFixed(1)+"px");
+      p.style.setProperty("--dy",(Math.sin(a)*dist).toFixed(1)+"px");
+      p.style.left="50%";p.style.top="42%";
+      p.style.background="hsl("+Math.round(Math.random()*360)+" 88% 62%)";
+      layer.appendChild(p);setTimeout(function(){p.remove()},950);
+    }
+  }
+  var fb=d.getElementById("feedback");
+  if(fb&&window.MutationObserver){
+    new MutationObserver(function(){
+      if(fb.classList.contains("good"))burst();
+    }).observe(fb,{attributes:true,attributeFilter:["class"]});
+  }
+  /* light haptics where supported */
+  var buzz=function(n){try{if(navigator.vibrate)navigator.vibrate(n)}catch(_){}};
+  d.addEventListener("click",function(e){
+    if(e.target.closest(".btn.primary,.state-option,.nav-btn"))buzz(8);
+  },{passive:true});
+})();
+
+</script>
+
+<style>
+/* ===== Android exclusives: glass navigation ===== */
+#sideDrawer{backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);
+  background:var(--glass-2);border-inline-end:1px solid var(--glass-line);box-shadow:var(--glass-shadow)}
+#drawerBackdrop{backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+.toolbar{background:var(--glass);border:1px solid var(--glass-line);border-radius:14px;padding:6px}
+.nav-btn{position:relative;overflow:hidden}
+#themeToggleButton{box-shadow:0 10px 24px -14px rgba(17,38,74,.6)}
+</style>
 </body>
 </html>
