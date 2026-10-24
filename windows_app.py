@@ -198,6 +198,30 @@ def _prune_stale_interface() -> None:
         _append_update_log(f"stale interface cleanup failed: {exc}")
 
 
+def interface_entry() -> Path:
+    """Load the interface from a content-addressed copy.
+
+    WebView2 keeps a disk cache in the persistent profile, keyed by URL. Loading
+    the same ``windows_index.html`` path after an update could therefore render
+    the page the user already had, even though the file on disk was new. A copy
+    whose file name carries the content hash gives every build its own URL.
+    """
+    source = windows_html_file()
+    data = source.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()[:12]
+    target_dir = app_data_dir() / "interface"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / f"windows_index-{digest}.html"
+    if not target.is_file() or target.read_bytes() != data:
+        temporary = target.with_name(target.name + ".tmp")
+        temporary.write_bytes(data)
+        os.replace(temporary, target)
+    for stale in target_dir.glob("windows_index-*.html"):
+        if stale.name != target.name:
+            stale.unlink(missing_ok=True)
+    return target
+
+
 def interface_details() -> dict[str, str]:
     """Describe which interface file the shell really loaded.
 
@@ -568,7 +592,8 @@ def _relaunch_self() -> None:
 
 def main() -> None:
     _prune_stale_interface()
-    html_file = windows_html_file()
+    html_file = interface_entry()
+    _append_update_log(f"launch {APP_VERSION}: interface {html_file.name}")
     profile = app_data_dir() / "WebViewProfile"
     profile.mkdir(parents=True, exist_ok=True)
     api = BackupApi()
