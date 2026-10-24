@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.1.0",
-  "notes": "نسخهٔ ۱.۱.۰: اصلاح نمایش نسخهٔ واقعی رابط ویندوز پس از به‌روزرسانی درون‌برنامه‌ای؛ ساخت Android با API 36 و خروجی AAB برای Google Play.",
+  "latest_version": "1.1.2",
+  "notes": "نسخهٔ ۱.۱.۲: اصلاح کیبورد آرایش الکترونی برای نمایشگر کوچک (چیدمان موبایلی کلیدها، حفظ مکان‌نما و درج درست کلید گاز نجیب بدون پاک‌کردن ورودی)؛ نمایش پیام خنثی در پایان بازی بدون ثبت پاسخ؛ تایمر ۳۰ ثانیه‌ای برای هر سؤال در مود آرایش الکترونی؛ نمایش مشخصات کامل عنصر پس از ثبت پاسخ در مود دسته‌بندی.",
   "windows_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/PeriodicTableTrainer-windows.zip",
   "windows_html_url": "https://raw.githubusercontent.com/AmirGFno/PeriodicTableTrainer/main/windows_index.html",
   "android_url": "https://github.com/AmirGFno/PeriodicTableTrainer/releases/latest/download/app-debug.apk"
