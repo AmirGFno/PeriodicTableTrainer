@@ -172,6 +172,9 @@ jobs:
             store_ok=false
             echo "::warning::keytool could not open the keystore with ANDROID_KEYSTORE_PASSWORD (wrong password or not a JKS/PKCS12 file)."
           fi
+          echo "--- alias details ---"
+          keytool -list -v -keystore "$keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$ANDROID_KEY_ALIAS" 2>&1 | grep -E "Alias|Entry type|Valid|Certificate fingerprint|Owner" || true
           echo "--- alias check: $ANDROID_KEY_ALIAS ---"
           if keytool -list -keystore "$keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" \
                -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
@@ -208,24 +211,48 @@ jobs:
             android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/app-aligned.apk" \
             && echo "zipalign ok" || echo "::warning::zipalign failed"
 
-          if "$build_tools/apksigner" sign \
+          # ANDROID_KEY_PASSWORD is often stale while the keystore password is
+          # correct; keytool still lists the entry, but signing needs the key
+          # password to unlock the private key. Try the dedicated password
+          # first and fall back to the keystore password, which is the default
+          # when -keypass is omitted.
+          sign_apk() {
+            "$build_tools/apksigner" sign \
               --ks "$keystore" --ks-key-alias "$ANDROID_KEY_ALIAS" \
-              --ks-pass "pass:$ANDROID_KEYSTORE_PASSWORD" --key-pass "pass:$ANDROID_KEY_PASSWORD" \
-              --out android-output/app-debug.apk "$RUNNER_TEMP/app-aligned.apk"; then
+              --ks-pass "pass:$ANDROID_KEYSTORE_PASSWORD" --key-pass "pass:$1" \
+              --out android-output/app-debug.apk "$RUNNER_TEMP/app-aligned.apk" 2> "$RUNNER_TEMP/apksigner.err"
+          }
+          sign_aab() {
+            jarsigner -keystore "$keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+              -keypass "$1" \
+              -signedjar "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab" \
+              android/app/build/outputs/bundle/release/app-release.aab "$ANDROID_KEY_ALIAS" 2> "$RUNNER_TEMP/jarsigner.err"
+          }
+
+          apk_ok=false
+          for candidate in "$ANDROID_KEY_PASSWORD" "$ANDROID_KEYSTORE_PASSWORD"; do
+            if sign_apk "$candidate"; then apk_ok=true; break; fi
+            echo "apksigner failed with that key password:"
+            tail -3 "$RUNNER_TEMP/apksigner.err" || true
+          done
+          if [ "$apk_ok" = true ]; then
             echo "--- certificate of the published APK ---"
             "$build_tools/apksigner" verify --print-certs android-output/app-debug.apk || true
           else
-            echo "::warning::apksigner could not sign the APK; the debug-signed APK will be published instead."
+            echo "::warning::apksigner could not sign the APK with either password; the debug-signed APK is published instead."
             rm -f android-output/app-debug.apk
           fi
 
-          if jarsigner -keystore "$keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" \
-               -keypass "$ANDROID_KEY_PASSWORD" \
-               -signedjar "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab" \
-               android/app/build/outputs/bundle/release/app-release.aab "$ANDROID_KEY_ALIAS"; then
+          aab_ok=false
+          for candidate in "$ANDROID_KEY_PASSWORD" "$ANDROID_KEYSTORE_PASSWORD"; do
+            if sign_aab "$candidate"; then aab_ok=true; break; fi
+            echo "jarsigner failed with that key password:"
+            tail -3 "$RUNNER_TEMP/jarsigner.err" || true
+          done
+          if [ "$aab_ok" = true ]; then
             jarsigner -verify "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab" || true
           else
-            echo "::warning::jarsigner could not sign the AAB; an unsigned bundle will be kept instead."
+            echo "::warning::jarsigner could not sign the AAB with either password; an unsigned bundle is kept instead."
             rm -f "android-output/PeriodicTableTrainer-${GITHUB_RUN_NUMBER}.aab"
           fi
           rm -f "$keystore"
